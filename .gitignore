@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.output/
+.vinxi/
+.tanstack/
+*.tsbuildinfo
+.DS_Store
+
+# Secretos (R-073)
+.env
+.env.*
+!.env.example

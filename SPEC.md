@@ -412,7 +412,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [ ] T0.8 Mover el build de Vesti a GitHub Actions + GHCR.
 
 ### M1 — Base (R-070, R-071, R-073–R-075)
-- [ ] T1.1 Scaffold TanStack Start + TS estricto + pnpm + ESLint (regla de `domain/`) + Prettier + `pnpm check`.
+- [x] T1.1 Scaffold TanStack Start + TS estricto + pnpm + ESLint (regla de `domain/`) + Prettier + `pnpm check`.
 - [ ] T1.2 lefthook + commitlint, hooks de Claude Code, skill `/ship-task`, plantilla de PR.
 - [ ] T1.3 `docker-compose.yml` (Postgres 16 en red interna, `mem_limit`, Mailpit en dev) + `docker-compose.prod.yml` + Dockerfile base.
 - [ ] T1.4 Env validado con Zod, logger JSON, UTC; Drizzle + migraciones aplicadas al arrancar `web`.

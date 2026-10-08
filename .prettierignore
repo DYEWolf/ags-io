@@ -1,0 +1,6 @@
+dist
+.output
+pnpm-lock.yaml
+src/routeTree.gen.ts
+src/db/migrations
+*.md
