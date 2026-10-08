@@ -1,0 +1,4 @@
+# Solo ajustes de pnpm; el proyecto es un único package (sin monorepo).
+allowBuilds:
+  # Los git hooks se instalan con el script `prepare` (lefthook install), no con su postinstall.
+  lefthook: false

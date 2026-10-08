@@ -1,0 +1,22 @@
+# Git hooks del proyecto. Se instalan con `pnpm install` (script prepare).
+pre-commit:
+  parallel: true
+  jobs:
+    - name: eslint
+      glob: '*.{ts,tsx,js,mjs}'
+      run: pnpm exec eslint --fix --max-warnings=0 --no-warn-ignored {staged_files}
+      stage_fixed: true
+    - name: prettier
+      glob: '*.{ts,tsx,js,mjs,json,css,yml,yaml}'
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+
+commit-msg:
+  jobs:
+    - name: commitlint
+      run: pnpm exec commitlint --edit {1}
+
+pre-push:
+  jobs:
+    - name: check
+      run: pnpm check
