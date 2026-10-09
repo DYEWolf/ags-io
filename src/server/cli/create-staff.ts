@@ -6,7 +6,6 @@
 // Pide la contraseña sin mostrarla (o la lee de STAFF_PASSWORD si no hay terminal).
 // Con --promote convierte en staff a un usuario que ya existe.
 import { stdin, stdout } from 'node:process'
-import { createInterface } from 'node:readline/promises'
 import { parseArgs } from 'node:util'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -16,21 +15,38 @@ import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '~/lib/password-policy'
 import { auth } from '~/server/auth'
 import { ensureOrganization } from '~/server/auth/organization'
 
-async function readHidden(prompt: string): Promise<string> {
-  const rl = createInterface({ input: stdin, output: stdout, terminal: true })
-  // Silencia el eco de lo que se escribe sin tocar el texto del prompt.
-  const output = rl as unknown as { _writeToOutput: (text: string) => void }
-  let muted = false
-  const write = output._writeToOutput.bind(rl)
-  output._writeToOutput = (text) => {
-    if (!muted) write(text)
-  }
-  const answer = rl.question(prompt)
-  muted = true
-  const value = await answer
-  rl.close()
-  stdout.write('\n')
-  return value
+/** Lee una línea de la terminal sin mostrar lo que se escribe (modo raw). */
+function readHidden(prompt: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    stdout.write(prompt)
+    stdin.setRawMode(true)
+    stdin.resume()
+    stdin.setEncoding('utf8')
+    let value = ''
+    const done = (error?: Error) => {
+      stdin.setRawMode(false)
+      stdin.pause()
+      stdin.off('data', onData)
+      stdout.write('\n')
+      if (error) reject(error)
+      else resolve(value)
+    }
+    const onData = (chunk: string) => {
+      for (const char of chunk) {
+        if (char === '\r' || char === '\n') {
+          done()
+          return
+        }
+        if (char === '\u0003') {
+          done(new Error('Cancelado'))
+          return
+        }
+        if (char === '\u007f' || char === '\b') value = value.slice(0, -1)
+        else value += char
+      }
+    }
+    stdin.on('data', onData)
+  })
 }
 
 async function readPassword(): Promise<string> {
