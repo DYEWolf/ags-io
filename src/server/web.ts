@@ -4,12 +4,14 @@ import { pathToFileURL } from 'node:url'
 import { serve } from 'srvx'
 import { staticMiddleware } from 'srvx/static'
 import { runMigrations } from '~/db/migrate'
+import { CLIENT_IP_HEADER, resolveClientIp, trustedProxies } from '~/lib/client-ip'
 import { env } from '~/lib/env'
 import { logger } from '~/lib/logger'
 import { APP_VERSION } from '~/lib/version'
 
 const log = logger.child({ service: 'web' })
 const distDir = resolve(process.cwd(), 'dist')
+const proxies = trustedProxies(env.TRUSTED_PROXY_CIDRS)
 
 interface StartServerEntry {
   fetch: (request: Request) => Response | Promise<Response>
@@ -26,7 +28,13 @@ async function main(): Promise<void> {
     hostname: env.HOST,
     port: env.PORT,
     silent: true,
-    fetch: (request) => app.fetch(request),
+    fetch: (request) => {
+      // R-001: X-Forwarded-For solo vale si la conexión viene del proxy de confianza (Caddy).
+      // Se sobrescribe siempre para que el cliente no pueda inyectar la cabecera.
+      const ip = resolveClientIp(request.ip, request.headers.get('x-forwarded-for'), proxies)
+      request.headers.set(CLIENT_IP_HEADER, ip)
+      return app.fetch(request)
+    },
     middleware: [
       // Los assets de Vite llevan hash en el nombre: se pueden cachear para siempre.
       staticMiddleware({ dir: join(distDir, 'client'), maxAge: 31_536_000, immutable: true }),

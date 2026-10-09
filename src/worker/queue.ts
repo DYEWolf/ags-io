@@ -1,29 +1,6 @@
-import type { Job, PgBoss, Queue } from 'pg-boss'
+import type { Job, PgBoss } from 'pg-boss'
 import type { Logger } from '~/lib/logger'
-
-export type QueueConfig = Omit<Queue, 'name' | 'deadLetter' | 'policy' | 'partition'>
-
-/**
- * Política por defecto (R-071): 3 reintentos con backoff exponencial (30 s, ~1 min, ~2 min…,
- * máx 1 h) y, agotados, el job pasa a su cola dead-letter `<cola>.dead` para revisión manual.
- */
-export const DEFAULT_QUEUE_CONFIG = {
-  retryLimit: 3,
-  retryBackoff: true,
-  retryDelay: 30,
-  retryDelayMax: 3_600,
-  expireInSeconds: 15 * 60,
-  deleteAfterSeconds: 7 * 24 * 3_600,
-} satisfies QueueConfig
-
-/** Los jobs muertos se conservan 30 días para poder inspeccionarlos y reencolarlos. */
-const DEAD_LETTER_CONFIG = {
-  retryLimit: 0,
-  retentionSeconds: 30 * 24 * 3_600,
-  deleteAfterSeconds: 30 * 24 * 3_600,
-} satisfies QueueConfig
-
-export const deadLetterName = (queue: string) => `${queue}.dead`
+import { ensureQueue, type QueueConfig } from '~/queue'
 
 export interface JobContext {
   log: Logger
@@ -40,37 +17,22 @@ export interface JobDefinition<Data extends object = object> {
   schedule?: { cron: string; data?: Data }
   /** Jobs procesados en paralelo por este worker. */
   concurrency?: number
-  /** Debe ser idempotente (R-071): un reintento no puede duplicar efectos. */
-  handler: (job: Job<Data>, ctx: JobContext) => Promise<void>
+  /**
+   * Debe ser idempotente (R-071): un reintento no puede duplicar efectos. Firma de método
+   * (bivariante) para poder listar jobs con distintos payloads; cada handler valida su `data`.
+   */
+  handler(job: Job<Data>, ctx: JobContext): Promise<void>
 }
 
 export function defineJob<Data extends object>(definition: JobDefinition<Data>) {
   return definition
 }
 
-async function upsertQueue(
-  boss: PgBoss,
-  name: string,
-  config: QueueConfig & { deadLetter?: string },
-) {
-  // createQueue no modifica una cola existente; updateQueue aplica la config actual del código.
-  if (await boss.getQueue(name)) {
-    await boss.updateQueue(name, config)
-  } else {
-    await boss.createQueue(name, config)
-  }
-}
-
 export async function registerJob(boss: PgBoss, job: JobDefinition, log: Logger): Promise<void> {
-  const config: QueueConfig = { ...DEFAULT_QUEUE_CONFIG, ...job.queue }
-  const withDeadLetter = job.deadLetter ?? true
-
-  if (withDeadLetter) {
-    await upsertQueue(boss, deadLetterName(job.name), DEAD_LETTER_CONFIG)
-  }
-  await upsertQueue(boss, job.name, {
-    ...config,
-    ...(withDeadLetter ? { deadLetter: deadLetterName(job.name) } : {}),
+  await ensureQueue(boss, {
+    name: job.name,
+    ...(job.queue ? { config: job.queue } : {}),
+    ...(job.deadLetter === undefined ? {} : { deadLetter: job.deadLetter }),
   })
 
   const jobLog = log.child({ queue: job.name })

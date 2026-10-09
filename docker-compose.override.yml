@@ -10,6 +10,11 @@ services:
     ports:
       - '127.0.0.1:3000:3000'
 
+  worker:
+    environment:
+      # Dentro de compose, Mailpit se alcanza por su nombre de servicio (red egress).
+      MAILPIT_URL: http://mailpit:8025
+
   mailpit:
     image: axllent/mailpit:v1.31
     restart: unless-stopped

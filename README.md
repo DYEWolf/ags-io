@@ -11,7 +11,7 @@ Servicio autohospedado de SEO, GEO y AEO para negocios. La fuente de verdad del 
 
 ```sh
 pnpm install                 # instala dependencias y los git hooks (lefthook)
-cp .env.example .env         # luego cambia POSTGRES_PASSWORD (y la misma clave en DATABASE_URL)
+cp .env.example .env         # cambia POSTGRES_PASSWORD (y en DATABASE_URL) y genera BETTER_AUTH_SECRET
 chmod 600 .env
 
 docker compose up -d postgres mailpit
@@ -19,7 +19,17 @@ pnpm dev                     # aplica migraciones y levanta la app en http://loc
 pnpm dev:worker              # en otra terminal: worker con recarga
 ```
 
-Mailpit (bandeja de correos de desarrollo): http://localhost:8025
+Mailpit (bandeja de correos de desarrollo): http://localhost:8025. Los correos los envía el
+worker, así que para registrarte o recuperar la contraseña tiene que estar corriendo.
+
+### Primer usuario staff
+
+```sh
+pnpm staff:create --email tu@correo --name "Tu nombre"                               # local
+docker compose exec -it web node dist/node/create-staff.mjs --email tu@correo --name "…"  # contenedor
+```
+
+Al entrar, activa la verificación en dos pasos (Cuenta → Seguridad): el panel de staff la exige.
 
 ### Stack completo en contenedores
 
@@ -38,6 +48,8 @@ curl localhost:3000/healthz
 | `pnpm db:generate --name <nombre>` | genera una migración a partir de `src/db/schema` |
 | `pnpm db:migrate` | aplica migraciones pendientes |
 | `pnpm db:studio` | Drizzle Studio |
+| `pnpm auth:check` | valida `src/db/schema/auth.ts` contra la config de Better Auth (tras cambiar plugins) |
+| `pnpm staff:create` | crea el primer staff (o `--promote` a un usuario existente) |
 | `pnpm build` / `pnpm start` / `pnpm start:worker` | build y ejecución de producción |
 
 ## Convenciones

@@ -88,23 +88,28 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 - EL SISTEMA DEBE permitir recuperar la contraseña por correo (enlace de un solo uso, expira en 1 h). CUANDO se restablece o cambia la contraseña, EL SISTEMA DEBE revocar las demás sesiones del usuario.
 - CUANDO haya 5 intentos de login fallidos en 10 minutos desde una IP, EL SISTEMA DEBE bloquear los intentos de login de esa IP durante 15 minutos. La IP se toma de `X-Forwarded-For` solo si la petición viene del proxy de confianza (Caddy).
 - Las respuestas de login, registro y recuperación NO DEBEN revelar si un email existe.
+- *Diseño (M2)*: el entrypoint `web` calcula la IP del cliente (X-Forwarded-For solo si la conexión llega desde `TRUSTED_PROXY_CIDRS`) y la fija en `x-ags-client-ip`, sobrescribiendo la del cliente; Better Auth y el bloqueo solo leen esa cabecera. Cuenta como fallo solo un 401 (credenciales inválidas). Además, rate limit de Better Auth por endpoint (p. ej. login 10/min, recuperación 5/15 min). `Secure` se activa cuando `APP_URL` es https. Si una cuenta sin verificar entra con la contraseña correcta, se le reenvía el enlace (no revela nada: exige la contraseña).
 
 **R-004 Gestión de cuenta**
 - EL SISTEMA DEBE permitir al usuario: cambiar nombre, contraseña y email (el nuevo email requiere verificación), ver sus sesiones activas y cerrarlas (una o todas), activar/desactivar 2FA (TOTP con códigos de respaldo) y eliminar su cuenta.
 - CUANDO un usuario elimina su cuenta y es el único owner de su organización, EL SISTEMA DEBE eliminar también la organización y sus datos.
+- *Diseño (M2)*: cambiar el email exige aprobarlo desde el correo actual y después confirmar el nuevo. 2FA por TOTP (app) con 10 códigos de respaldo cifrados; al verificar se puede confiar en el dispositivo 30 días. Eliminar la cuenta pide la contraseña. Las sesiones se listan sin exponer tokens al navegador.
 
 **R-005 Organizaciones (multi-tenencia)**
 - CUANDO un usuario verifica su email por primera vez, EL SISTEMA DEBE crear su organización con él como *owner* si aún no tiene una.
 - Todos los datos de negocio (sitios y todo lo que cuelga de ellos, gasto, reportes) DEBEN pertenecer a una organización.
 - EL SISTEMA DEBE garantizar en la capa de servidor que un usuario solo lea y modifique datos de las organizaciones de las que es miembro; un acceso a un recurso ajeno DEBE responder como "no encontrado".
+- *Diseño (M2)*: cada sesión guarda su organización activa; `organizationMiddleware` (src/functions) la valida contra `member` e inyecta `organizationId`, y toda server function de datos de negocio debe usarlo y filtrar por él. Los endpoints HTTP del plugin organization que no se usan (crear, borrar, invitar, miembros) responden 404 hasta el módulo "Equipo".
 
 **R-006 Staff**
 - EL SISTEMA DEBE distinguir el rol de plataforma `staff` del rol `user`. El primer staff se crea con un comando de CLI, nunca desde la UI.
 - Un usuario staff DEBE tener 2FA activado para acceder al panel de staff.
 - EL SISTEMA DEBE ofrecer a staff: lista de usuarios y organizaciones, suspender/reactivar usuarios (un usuario suspendido no puede iniciar sesión y sus sesiones se revocan) e impersonar a un usuario, con un indicador visible y una forma de salir de la impersonación.
+- *Diseño (M2)*: CLI `create-staff` (`pnpm staff:create` o `node dist/node/create-staff.mjs` en el contenedor). Staff sin 2FA es redirigido a Cuenta → Seguridad; los endpoints `/api/auth/admin/*` también exigen staff con 2FA. La impersonación dura como máximo 1 h y no se puede suspender ni impersonar a otro staff.
 
 **R-007 Email transaccional**
 - EL SISTEMA DEBE enviar correos (verificación, recuperación, cambio de email) a través de una interfaz `EmailProvider`.
+- `web` renderiza el correo y lo encola en `email.send` (pg-boss); `worker` lo envía con la política de R-071 (reintentos y `email.send.dead`). Los jobs de correo se borran a las 24 h porque llevan enlaces con token.
 - En desarrollo DEBE usarse Mailpit (bandeja local); en producción, Resend.
 
 **R-002 Gestión de sitios**
@@ -280,7 +285,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 | Navegador | Playwright (Chromium) | solo en worker |
 | Validación | Zod | entradas, configs y respuestas de APIs |
 | Auth | Better Auth (autohospedado, adaptador Drizzle) | plugins `organization`, `admin`, `twoFactor`; hash argon2id |
-| Email | Resend (prod) · Mailpit (dev) | detrás de `EmailProvider` |
+| Email | Resend (prod) · Mailpit (dev) | detrás de `EmailProvider`; ambos por su API HTTP con `fetch` (sin SDK) |
 | Verificación | `pnpm check` = typecheck + lint + format + build | **sin unit tests**; cada módulo se valida con e2e manual del admin |
 | Calidad de commits | lefthook + commitlint (Conventional Commits) · hooks de Claude Code · skill `/ship-task` | formato `tipo(M<n>): resumen [R-XXX]` |
 | CI/CD | GitHub Actions → GHCR → SSH `docker compose pull && up -d` | nunca compilar en la VPS |
@@ -306,7 +311,10 @@ ags-io/
   .github/                 # plantilla de PR (y workflows desde el módulo Deploy)
   src/
     routes/                # TanStack Start (dashboard, panel staff, reportes)
-    server/                # server functions, auth (Better Auth), guards de organización
+    functions/             # server functions y middlewares (auth, organización, staff); importables desde la UI
+    server/                # solo servidor: Better Auth, consultas, entrypoint web, CLIs (bloqueado en el cliente)
+    queue/                 # definición de colas compartida por web (produce) y worker (consume)
+    components/            # componentes de UI
     worker/
       index.ts             # entrypoint del worker
       jobs/                # un archivo por job (gsc.import, bots.ingest, audit.run, ...)
@@ -322,7 +330,7 @@ ags-io/
       bing.ts
       pagespeed.ts
       telegram.ts
-      email/               # EmailProvider + resend.ts + mailpit (SMTP dev)
+      email/               # EmailProvider + resend.ts + mailpit.ts (API HTTP de Mailpit en dev)
     audit/                 # fetch sin JS, playwright, jsonld, robots, sitemap
     bots/                  # parser de logs, clasificador, verificación
     lib/                   # utilidades (env, costos, dinero, fechas, logger)
@@ -338,17 +346,19 @@ Regla: `domain/` no importa nada de `providers/`, `db/` ni frameworks. La hace c
 Todos los timestamps son `timestamptz` en UTC (R-075).
 
 ```
--- Auth (tablas gestionadas por Better Auth; nombres finales según su esquema)
-user           (id, name, email, email_verified, role user|staff, banned, ban_reason,
-                two_factor_enabled, created_at, updated_at)
-session        (id, user_id, token, expires_at, ip, user_agent, active_organization_id,
-                impersonated_by, created_at)
-account        (id, user_id, provider_id, password, ...)          -- hash argon2id
-verification   (id, identifier, value, expires_at)
-two_factor     (id, user_id, secret, backup_codes)
-organization   (id, name, slug, created_at)                       -- reemplaza a clients
+-- Auth (Better Auth: núcleo + plugins organization, admin y twoFactor; src/db/schema/auth.ts)
+user           (id, name, email, email_verified, image, role user|staff, banned, ban_reason,
+                ban_expires, two_factor_enabled, created_at, updated_at)
+session        (id, user_id, token, expires_at, ip_address, user_agent, active_organization_id,
+                impersonated_by, created_at, updated_at)
+account        (id, user_id, provider_id, account_id, password, tokens OAuth…)  -- hash argon2id
+verification   (id, identifier, value, expires_at)                -- identificador hasheado
+two_factor     (id, user_id, secret, backup_codes, verified, failed_verification_count,
+                locked_until)                                      -- backup codes cifrados
+organization   (id, name, slug, logo, metadata, created_at)       -- reemplaza a clients
 member         (id, organization_id, user_id, role owner|admin|member, created_at)
-login_failures (ip, attempted_at)                                  -- R-001 bloqueo por IP
+invitation     (id, organization_id, email, role, status, inviter_id, expires_at)  -- sin uso hasta "Equipo"
+login_failures (id, ip, attempted_at)                              -- R-001 bloqueo por IP
 worker_heartbeat (worker_id, version, started_at, beat_at)        -- R-074
 
 sites          (id, organization_id, domain, gsc_property, bing_site, city, lat, lng,
@@ -425,12 +435,12 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - **E2E del admin**: `docker compose up` levanta todo; `/healthz` responde 200 y 503 si Postgres cae; el heartbeat del worker se actualiza en DB; un commit con mensaje inválido es rechazado.
 
 ### M2 — Cuentas (R-001, R-004, R-005, R-006, R-007)
-- [ ] T2.1 Better Auth + esquema Drizzle + argon2id + `EmailProvider` (Mailpit/Resend).
-- [ ] T2.2 Registro, verificación de email, login, logout, redirección a la ruta original.
-- [ ] T2.3 Recuperación de contraseña + bloqueo por IP + respuestas que no revelan emails.
-- [ ] T2.4 Creación automática de organización + guard de organización en el servidor.
-- [ ] T2.5 Ajustes de cuenta: perfil, contraseña, email, sesiones, 2FA, eliminar cuenta.
-- [ ] T2.6 Panel de staff: CLI para crear el primer staff, 2FA obligatorio, usuarios/organizaciones, suspender, impersonar.
+- [x] T2.1 Better Auth + esquema Drizzle + argon2id + `EmailProvider` (Mailpit/Resend).
+- [x] T2.2 Registro, verificación de email, login, logout, redirección a la ruta original.
+- [x] T2.3 Recuperación de contraseña + bloqueo por IP + respuestas que no revelan emails.
+- [x] T2.4 Creación automática de organización + guard de organización en el servidor.
+- [x] T2.5 Ajustes de cuenta: perfil, contraseña, email, sesiones, 2FA, eliminar cuenta.
+- [x] T2.6 Panel de staff: CLI para crear el primer staff, 2FA obligatorio, usuarios/organizaciones, suspender, impersonar.
 
 ### M3 — Sitios (R-002)
 - [ ] T3.1 Esquema y CRUD de sitios por organización, validación Zod, dominio normalizado y único.

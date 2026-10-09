@@ -14,17 +14,33 @@ export default defineConfig({
     tailwindcss(),
     tanstackStart({
       importProtection: {
-        // Código de servidor que nunca debe llegar al navegador (DB, worker, secretos).
+        // Código de servidor que nunca debe llegar al navegador (DB, auth, worker, secretos).
+        // Las server functions viven en `src/functions/`: el compilador de Start sustituye sus
+        // handlers por llamadas RPC en el cliente, así que pueden importar de `src/server/`.
         client: {
           files: [
             '**/*.server.*',
+            '**/src/server/**',
             '**/src/db/**',
+            '**/src/queue/**',
             '**/src/worker/**',
             '**/src/providers/**',
             '**/src/lib/env.ts',
             '**/src/lib/logger.ts',
+            '**/src/lib/client-ip.ts',
           ],
-          specifiers: ['pg', 'pg-boss', 'drizzle-orm', 'pino', 'srvx'],
+          specifiers: [
+            'pg',
+            'pg-boss',
+            'drizzle-orm',
+            'pino',
+            'srvx',
+            '@node-rs/argon2',
+            '@better-auth/drizzle-adapter',
+            'better-auth/api',
+            'better-auth/plugins',
+            'better-auth/tanstack-start',
+          ],
         },
       },
     }),

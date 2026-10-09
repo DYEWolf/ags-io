@@ -10,11 +10,36 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as HealthzRouteImport } from './routes/healthz'
+import { Route as AppCuentaRouteRouteImport } from './routes/_app/cuenta/route'
+import { Route as AppPanelRouteImport } from './routes/_app/panel'
+import { Route as AppStaffRouteRouteImport } from './routes/_app/staff/route'
+import { Route as AuthCorreoVerificadoRouteImport } from './routes/_auth/correo-verificado'
+import { Route as AuthDosPasosRouteImport } from './routes/_auth/dos-pasos'
+import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as AuthRecuperarRouteImport } from './routes/_auth/recuperar'
+import { Route as AuthRegistroRouteImport } from './routes/_auth/registro'
+import { Route as AuthRestablecerRouteImport } from './routes/_auth/restablecer'
+import { Route as AuthVerificaTuCorreoRouteImport } from './routes/_auth/verifica-tu-correo'
+import { Route as AppCuentaIndexRouteImport } from './routes/_app/cuenta/index'
+import { Route as AppCuentaSeguridadRouteImport } from './routes/_app/cuenta/seguridad'
+import { Route as AppStaffIndexRouteImport } from './routes/_app/staff/index'
+import { Route as AppStaffOrganizacionesRouteImport } from './routes/_app/staff/organizaciones'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/_auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HealthzRoute = HealthzRouteImport.update({
@@ -22,31 +47,206 @@ const HealthzRoute = HealthzRouteImport.update({
   path: '/healthz',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppCuentaRouteRoute = AppCuentaRouteRouteImport.update({
+  id: '/cuenta',
+  path: '/cuenta',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPanelRoute = AppPanelRouteImport.update({
+  id: '/panel',
+  path: '/panel',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStaffRouteRoute = AppStaffRouteRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => AppRoute,
+} as any)
+const AuthCorreoVerificadoRoute = AuthCorreoVerificadoRouteImport.update({
+  id: '/correo-verificado',
+  path: '/correo-verificado',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthDosPasosRoute = AuthDosPasosRouteImport.update({
+  id: '/dos-pasos',
+  path: '/dos-pasos',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthRecuperarRoute = AuthRecuperarRouteImport.update({
+  id: '/recuperar',
+  path: '/recuperar',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthRegistroRoute = AuthRegistroRouteImport.update({
+  id: '/registro',
+  path: '/registro',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthRestablecerRoute = AuthRestablecerRouteImport.update({
+  id: '/restablecer',
+  path: '/restablecer',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthVerificaTuCorreoRoute = AuthVerificaTuCorreoRouteImport.update({
+  id: '/verifica-tu-correo',
+  path: '/verifica-tu-correo',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AppCuentaIndexRoute = AppCuentaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppCuentaRouteRoute,
+} as any)
+const AppCuentaSeguridadRoute = AppCuentaSeguridadRouteImport.update({
+  id: '/seguridad',
+  path: '/seguridad',
+  getParentRoute: () => AppCuentaRouteRoute,
+} as any)
+const AppStaffIndexRoute = AppStaffIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppStaffRouteRoute,
+} as any)
+const AppStaffOrganizacionesRoute = AppStaffOrganizacionesRouteImport.update({
+  id: '/organizaciones',
+  path: '/organizaciones',
+  getParentRoute: () => AppStaffRouteRoute,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/healthz': typeof HealthzRoute
+  '/cuenta': typeof AppCuentaRouteRouteWithChildren
+  '/staff': typeof AppStaffRouteRouteWithChildren
+  '/panel': typeof AppPanelRoute
+  '/correo-verificado': typeof AuthCorreoVerificadoRoute
+  '/dos-pasos': typeof AuthDosPasosRoute
+  '/login': typeof AuthLoginRoute
+  '/recuperar': typeof AuthRecuperarRoute
+  '/registro': typeof AuthRegistroRoute
+  '/restablecer': typeof AuthRestablecerRoute
+  '/verifica-tu-correo': typeof AuthVerificaTuCorreoRoute
+  '/cuenta/seguridad': typeof AppCuentaSeguridadRoute
+  '/staff/organizaciones': typeof AppStaffOrganizacionesRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/cuenta/': typeof AppCuentaIndexRoute
+  '/staff/': typeof AppStaffIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/healthz': typeof HealthzRoute
+  '/panel': typeof AppPanelRoute
+  '/correo-verificado': typeof AuthCorreoVerificadoRoute
+  '/dos-pasos': typeof AuthDosPasosRoute
+  '/login': typeof AuthLoginRoute
+  '/recuperar': typeof AuthRecuperarRoute
+  '/registro': typeof AuthRegistroRoute
+  '/restablecer': typeof AuthRestablecerRoute
+  '/verifica-tu-correo': typeof AuthVerificaTuCorreoRoute
+  '/cuenta/seguridad': typeof AppCuentaSeguridadRoute
+  '/staff/organizaciones': typeof AppStaffOrganizacionesRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/cuenta': typeof AppCuentaIndexRoute
+  '/staff': typeof AppStaffIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_auth': typeof AuthRouteWithChildren
   '/healthz': typeof HealthzRoute
+  '/_app/cuenta': typeof AppCuentaRouteRouteWithChildren
+  '/_app/staff': typeof AppStaffRouteRouteWithChildren
+  '/_app/panel': typeof AppPanelRoute
+  '/_auth/correo-verificado': typeof AuthCorreoVerificadoRoute
+  '/_auth/dos-pasos': typeof AuthDosPasosRoute
+  '/_auth/login': typeof AuthLoginRoute
+  '/_auth/recuperar': typeof AuthRecuperarRoute
+  '/_auth/registro': typeof AuthRegistroRoute
+  '/_auth/restablecer': typeof AuthRestablecerRoute
+  '/_auth/verifica-tu-correo': typeof AuthVerificaTuCorreoRoute
+  '/_app/cuenta/seguridad': typeof AppCuentaSeguridadRoute
+  '/_app/staff/organizaciones': typeof AppStaffOrganizacionesRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_app/cuenta/': typeof AppCuentaIndexRoute
+  '/_app/staff/': typeof AppStaffIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/healthz'
+  fullPaths:
+    | '/'
+    | '/healthz'
+    | '/cuenta'
+    | '/staff'
+    | '/panel'
+    | '/correo-verificado'
+    | '/dos-pasos'
+    | '/login'
+    | '/recuperar'
+    | '/registro'
+    | '/restablecer'
+    | '/verifica-tu-correo'
+    | '/cuenta/seguridad'
+    | '/staff/organizaciones'
+    | '/api/auth/$'
+    | '/cuenta/'
+    | '/staff/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/healthz'
-  id: '__root__' | '/' | '/healthz'
+  to:
+    | '/'
+    | '/healthz'
+    | '/panel'
+    | '/correo-verificado'
+    | '/dos-pasos'
+    | '/login'
+    | '/recuperar'
+    | '/registro'
+    | '/restablecer'
+    | '/verifica-tu-correo'
+    | '/cuenta/seguridad'
+    | '/staff/organizaciones'
+    | '/api/auth/$'
+    | '/cuenta'
+    | '/staff'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/_auth'
+    | '/healthz'
+    | '/_app/cuenta'
+    | '/_app/staff'
+    | '/_app/panel'
+    | '/_auth/correo-verificado'
+    | '/_auth/dos-pasos'
+    | '/_auth/login'
+    | '/_auth/recuperar'
+    | '/_auth/registro'
+    | '/_auth/restablecer'
+    | '/_auth/verifica-tu-correo'
+    | '/_app/cuenta/seguridad'
+    | '/_app/staff/organizaciones'
+    | '/api/auth/$'
+    | '/_app/cuenta/'
+    | '/_app/staff/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  AuthRoute: typeof AuthRouteWithChildren
   HealthzRoute: typeof HealthzRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,6 +258,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/healthz': {
       id: '/healthz'
       path: '/healthz'
@@ -65,12 +279,184 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HealthzRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/cuenta': {
+      id: '/_app/cuenta'
+      path: '/cuenta'
+      fullPath: '/cuenta'
+      preLoaderRoute: typeof AppCuentaRouteRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/panel': {
+      id: '/_app/panel'
+      path: '/panel'
+      fullPath: '/panel'
+      preLoaderRoute: typeof AppPanelRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/staff': {
+      id: '/_app/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof AppStaffRouteRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_auth/correo-verificado': {
+      id: '/_auth/correo-verificado'
+      path: '/correo-verificado'
+      fullPath: '/correo-verificado'
+      preLoaderRoute: typeof AuthCorreoVerificadoRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/dos-pasos': {
+      id: '/_auth/dos-pasos'
+      path: '/dos-pasos'
+      fullPath: '/dos-pasos'
+      preLoaderRoute: typeof AuthDosPasosRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/login': {
+      id: '/_auth/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/recuperar': {
+      id: '/_auth/recuperar'
+      path: '/recuperar'
+      fullPath: '/recuperar'
+      preLoaderRoute: typeof AuthRecuperarRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/registro': {
+      id: '/_auth/registro'
+      path: '/registro'
+      fullPath: '/registro'
+      preLoaderRoute: typeof AuthRegistroRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/restablecer': {
+      id: '/_auth/restablecer'
+      path: '/restablecer'
+      fullPath: '/restablecer'
+      preLoaderRoute: typeof AuthRestablecerRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/verifica-tu-correo': {
+      id: '/_auth/verifica-tu-correo'
+      path: '/verifica-tu-correo'
+      fullPath: '/verifica-tu-correo'
+      preLoaderRoute: typeof AuthVerificaTuCorreoRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_app/cuenta/': {
+      id: '/_app/cuenta/'
+      path: '/'
+      fullPath: '/cuenta/'
+      preLoaderRoute: typeof AppCuentaIndexRouteImport
+      parentRoute: typeof AppCuentaRouteRoute
+    }
+    '/_app/cuenta/seguridad': {
+      id: '/_app/cuenta/seguridad'
+      path: '/seguridad'
+      fullPath: '/cuenta/seguridad'
+      preLoaderRoute: typeof AppCuentaSeguridadRouteImport
+      parentRoute: typeof AppCuentaRouteRoute
+    }
+    '/_app/staff/': {
+      id: '/_app/staff/'
+      path: '/'
+      fullPath: '/staff/'
+      preLoaderRoute: typeof AppStaffIndexRouteImport
+      parentRoute: typeof AppStaffRouteRoute
+    }
+    '/_app/staff/organizaciones': {
+      id: '/_app/staff/organizaciones'
+      path: '/organizaciones'
+      fullPath: '/staff/organizaciones'
+      preLoaderRoute: typeof AppStaffOrganizacionesRouteImport
+      parentRoute: typeof AppStaffRouteRoute
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AppCuentaRouteRouteChildren {
+  AppCuentaSeguridadRoute: typeof AppCuentaSeguridadRoute
+  AppCuentaIndexRoute: typeof AppCuentaIndexRoute
+}
+
+const AppCuentaRouteRouteChildren: AppCuentaRouteRouteChildren = {
+  AppCuentaSeguridadRoute: AppCuentaSeguridadRoute,
+  AppCuentaIndexRoute: AppCuentaIndexRoute,
+}
+
+const AppCuentaRouteRouteWithChildren = AppCuentaRouteRoute._addFileChildren(
+  AppCuentaRouteRouteChildren,
+)
+
+interface AppStaffRouteRouteChildren {
+  AppStaffOrganizacionesRoute: typeof AppStaffOrganizacionesRoute
+  AppStaffIndexRoute: typeof AppStaffIndexRoute
+}
+
+const AppStaffRouteRouteChildren: AppStaffRouteRouteChildren = {
+  AppStaffOrganizacionesRoute: AppStaffOrganizacionesRoute,
+  AppStaffIndexRoute: AppStaffIndexRoute,
+}
+
+const AppStaffRouteRouteWithChildren = AppStaffRouteRoute._addFileChildren(
+  AppStaffRouteRouteChildren,
+)
+
+interface AppRouteChildren {
+  AppCuentaRouteRoute: typeof AppCuentaRouteRouteWithChildren
+  AppStaffRouteRoute: typeof AppStaffRouteRouteWithChildren
+  AppPanelRoute: typeof AppPanelRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppCuentaRouteRoute: AppCuentaRouteRouteWithChildren,
+  AppStaffRouteRoute: AppStaffRouteRouteWithChildren,
+  AppPanelRoute: AppPanelRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
+interface AuthRouteChildren {
+  AuthCorreoVerificadoRoute: typeof AuthCorreoVerificadoRoute
+  AuthDosPasosRoute: typeof AuthDosPasosRoute
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthRecuperarRoute: typeof AuthRecuperarRoute
+  AuthRegistroRoute: typeof AuthRegistroRoute
+  AuthRestablecerRoute: typeof AuthRestablecerRoute
+  AuthVerificaTuCorreoRoute: typeof AuthVerificaTuCorreoRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthCorreoVerificadoRoute: AuthCorreoVerificadoRoute,
+  AuthDosPasosRoute: AuthDosPasosRoute,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthRecuperarRoute: AuthRecuperarRoute,
+  AuthRegistroRoute: AuthRegistroRoute,
+  AuthRestablecerRoute: AuthRestablecerRoute,
+  AuthVerificaTuCorreoRoute: AuthVerificaTuCorreoRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  AuthRoute: AuthRouteWithChildren,
   HealthzRoute: HealthzRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

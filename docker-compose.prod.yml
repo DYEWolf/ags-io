@@ -1,4 +1,6 @@
 # Producción: imagen de GHCR y red externa de Caddy (el proxy es el único punto de entrada).
+# En .env: APP_URL=https://<dominio>, EMAIL_PROVIDER=resend, RESEND_API_KEY y
+# TRUSTED_PROXY_CIDRS con la subred de la red de Caddy (`docker network inspect web`).
 services:
   web:
     image: ${AGS_IMAGE:?define AGS_IMAGE, p. ej. ghcr.io/<owner>/ags-io:<tag>}

@@ -17,6 +17,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/db-migrate.ts",
     "db:studio": "drizzle-kit studio",
+    "auth:check": "auth check schema --config src/server/auth.ts",
+    "staff:create": "tsx src/server/cli/create-staff.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
@@ -26,16 +28,20 @@
     "prepare": "lefthook install"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "1.7.7",
+    "@node-rs/argon2": "^2.2.2",
     "@tanstack/react-router": "^1.170.41",
     "@tanstack/react-start": "^1.168.60",
+    "better-auth": "1.7.7",
     "drizzle-orm": "0.45.4",
     "pg": "^8.23.1",
     "pg-boss": "^12.37.0",
     "pino": "^10.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "zod": "^4.6.5",
-    "srvx": "^1.0.5"
+    "react-qr-code": "^2.2.0",
+    "srvx": "^1.0.5",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",
@@ -49,6 +55,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "auth": "1.7.7",
     "drizzle-kit": "0.31.11",
     "esbuild": "^0.28.2",
     "eslint": "^10.12.0",

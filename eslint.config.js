@@ -39,8 +39,8 @@ export default defineConfig(
     ],
   },
   {
-    // Las rutas de TanStack exigen `throw redirect()/notFound()`, que no son Error.
-    files: ['src/routes/**/*.{ts,tsx}'],
+    // Rutas y server functions de TanStack usan `throw redirect()/notFound()`, que no son Error.
+    files: ['src/routes/**/*.{ts,tsx}', 'src/functions/**/*.ts'],
     rules: { '@typescript-eslint/only-throw-error': 'off' },
   },
   {

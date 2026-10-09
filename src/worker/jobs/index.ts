@@ -1,5 +1,7 @@
 import type { JobDefinition } from '~/worker/queue'
-import { heartbeatJob } from './system.heartbeat'
+import { authCleanupJob } from '~/worker/jobs/auth.cleanup'
+import { emailSendJob } from '~/worker/jobs/email.send'
+import { heartbeatJob } from '~/worker/jobs/system.heartbeat'
 
-// Un archivo por job (SPEC §7); todos se registran aquí.
-export const jobs: JobDefinition[] = [heartbeatJob]
+// Registro de jobs del worker: añadir aquí cada archivo nuevo de `jobs/`.
+export const jobs: JobDefinition[] = [heartbeatJob, emailSendJob, authCleanupJob]
