@@ -29,6 +29,8 @@ import { Route as AppSitiosIndexRouteImport } from './routes/_app/sitios/index'
 import { Route as AppSitiosSiteIdRouteImport } from './routes/_app/sitios/$siteId'
 import { Route as AppSitiosNuevoRouteImport } from './routes/_app/sitios/nuevo'
 import { Route as AppStaffIndexRouteImport } from './routes/_app/staff/index'
+import { Route as AppStaffGastoRouteImport } from './routes/_app/staff/gasto'
+import { Route as AppStaffJobsRouteImport } from './routes/_app/staff/jobs'
 import { Route as AppStaffOrganizacionesRouteImport } from './routes/_app/staff/organizaciones'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -130,6 +132,16 @@ const AppStaffIndexRoute = AppStaffIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppStaffRouteRoute,
 } as any)
+const AppStaffGastoRoute = AppStaffGastoRouteImport.update({
+  id: '/gasto',
+  path: '/gasto',
+  getParentRoute: () => AppStaffRouteRoute,
+} as any)
+const AppStaffJobsRoute = AppStaffJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => AppStaffRouteRoute,
+} as any)
 const AppStaffOrganizacionesRoute = AppStaffOrganizacionesRouteImport.update({
   id: '/organizaciones',
   path: '/organizaciones',
@@ -157,6 +169,8 @@ export interface FileRoutesByFullPath {
   '/cuenta/seguridad': typeof AppCuentaSeguridadRoute
   '/sitios/$siteId': typeof AppSitiosSiteIdRoute
   '/sitios/nuevo': typeof AppSitiosNuevoRoute
+  '/staff/gasto': typeof AppStaffGastoRoute
+  '/staff/jobs': typeof AppStaffJobsRoute
   '/staff/organizaciones': typeof AppStaffOrganizacionesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/cuenta/': typeof AppCuentaIndexRoute
@@ -177,6 +191,8 @@ export interface FileRoutesByTo {
   '/cuenta/seguridad': typeof AppCuentaSeguridadRoute
   '/sitios/$siteId': typeof AppSitiosSiteIdRoute
   '/sitios/nuevo': typeof AppSitiosNuevoRoute
+  '/staff/gasto': typeof AppStaffGastoRoute
+  '/staff/jobs': typeof AppStaffJobsRoute
   '/staff/organizaciones': typeof AppStaffOrganizacionesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/cuenta': typeof AppCuentaIndexRoute
@@ -202,6 +218,8 @@ export interface FileRoutesById {
   '/_app/cuenta/seguridad': typeof AppCuentaSeguridadRoute
   '/_app/sitios/$siteId': typeof AppSitiosSiteIdRoute
   '/_app/sitios/nuevo': typeof AppSitiosNuevoRoute
+  '/_app/staff/gasto': typeof AppStaffGastoRoute
+  '/_app/staff/jobs': typeof AppStaffJobsRoute
   '/_app/staff/organizaciones': typeof AppStaffOrganizacionesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_app/cuenta/': typeof AppCuentaIndexRoute
@@ -226,6 +244,8 @@ export interface FileRouteTypes {
     | '/cuenta/seguridad'
     | '/sitios/$siteId'
     | '/sitios/nuevo'
+    | '/staff/gasto'
+    | '/staff/jobs'
     | '/staff/organizaciones'
     | '/api/auth/$'
     | '/cuenta/'
@@ -246,6 +266,8 @@ export interface FileRouteTypes {
     | '/cuenta/seguridad'
     | '/sitios/$siteId'
     | '/sitios/nuevo'
+    | '/staff/gasto'
+    | '/staff/jobs'
     | '/staff/organizaciones'
     | '/api/auth/$'
     | '/cuenta'
@@ -270,6 +292,8 @@ export interface FileRouteTypes {
     | '/_app/cuenta/seguridad'
     | '/_app/sitios/$siteId'
     | '/_app/sitios/nuevo'
+    | '/_app/staff/gasto'
+    | '/_app/staff/jobs'
     | '/_app/staff/organizaciones'
     | '/api/auth/$'
     | '/_app/cuenta/'
@@ -427,6 +451,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStaffIndexRouteImport
       parentRoute: typeof AppStaffRouteRoute
     }
+    '/_app/staff/gasto': {
+      id: '/_app/staff/gasto'
+      path: '/gasto'
+      fullPath: '/staff/gasto'
+      preLoaderRoute: typeof AppStaffGastoRouteImport
+      parentRoute: typeof AppStaffRouteRoute
+    }
+    '/_app/staff/jobs': {
+      id: '/_app/staff/jobs'
+      path: '/jobs'
+      fullPath: '/staff/jobs'
+      preLoaderRoute: typeof AppStaffJobsRouteImport
+      parentRoute: typeof AppStaffRouteRoute
+    }
     '/_app/staff/organizaciones': {
       id: '/_app/staff/organizaciones'
       path: '/organizaciones'
@@ -459,11 +497,15 @@ const AppCuentaRouteRouteWithChildren = AppCuentaRouteRoute._addFileChildren(
 )
 
 interface AppStaffRouteRouteChildren {
+  AppStaffGastoRoute: typeof AppStaffGastoRoute
+  AppStaffJobsRoute: typeof AppStaffJobsRoute
   AppStaffOrganizacionesRoute: typeof AppStaffOrganizacionesRoute
   AppStaffIndexRoute: typeof AppStaffIndexRoute
 }
 
 const AppStaffRouteRouteChildren: AppStaffRouteRouteChildren = {
+  AppStaffGastoRoute: AppStaffGastoRoute,
+  AppStaffJobsRoute: AppStaffJobsRoute,
   AppStaffOrganizacionesRoute: AppStaffOrganizacionesRoute,
   AppStaffIndexRoute: AppStaffIndexRoute,
 }

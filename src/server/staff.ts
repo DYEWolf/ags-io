@@ -1,5 +1,5 @@
 // Consultas del panel de staff (R-006). Solo se llaman tras `staffMiddleware`.
-import { asc, count, desc, eq, ilike, or, sql } from 'drizzle-orm'
+import { asc, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import { db } from '~/db/client'
 import { member, organization, user } from '~/db/schema'
 
@@ -55,4 +55,22 @@ export async function listOrganizations(options: { page: number; search: string 
       members: row.members,
     })),
   }
+}
+
+export async function organizationsByIds(ids: string[]) {
+  if (ids.length === 0) return new Map<string, { name: string; slug: string }>()
+  const rows = await db
+    .select({ id: organization.id, name: organization.name, slug: organization.slug })
+    .from(organization)
+    .where(inArray(organization.id, ids))
+  return new Map(rows.map((row) => [row.id, { name: row.name, slug: row.slug }]))
+}
+
+export async function organizationIdBySlugOrId(value: string): Promise<string | null> {
+  const [row] = await db
+    .select({ id: organization.id })
+    .from(organization)
+    .where(or(eq(organization.slug, value), eq(organization.id, value)))
+    .limit(1)
+  return row?.id ?? null
 }

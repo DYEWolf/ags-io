@@ -27,7 +27,8 @@ async function start(): Promise<PgBoss> {
   return boss
 }
 
-function producer(): Promise<PgBoss> {
+/** Instancia de pg-boss del proceso web (solo produce; la usan también las acciones de staff). */
+export function producer(): Promise<PgBoss> {
   started ??= start().catch((error: unknown) => {
     started = undefined // el siguiente intento vuelve a conectar
     throw error

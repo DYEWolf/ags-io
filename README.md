@@ -50,6 +50,7 @@ curl localhost:3000/healthz
 | `pnpm db:studio` | Drizzle Studio |
 | `pnpm auth:check` | valida `src/db/schema/auth.ts` contra la config de Better Auth (tras cambiar plugins) |
 | `pnpm staff:create` | crea el primer staff (o `--promote` a un usuario existente) |
+| `pnpm spend:demo --provider serper --cost 0.5 [--org <slug>] [--times N]` | simula llamadas de pago para probar los topes (solo desarrollo) |
 | `pnpm build` / `pnpm start` / `pnpm start:worker` | build y ejecución de producción |
 
 ## Convenciones

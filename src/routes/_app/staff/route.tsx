@@ -37,6 +37,22 @@ function StaffLayout() {
         >
           Organizaciones
         </Link>
+        <Link
+          to="/staff/gasto"
+          activeOptions={{ includeSearch: false }}
+          className={tabClass}
+          activeProps={{ className: tabActive }}
+        >
+          Gasto
+        </Link>
+        <Link
+          to="/staff/jobs"
+          activeOptions={{ includeSearch: false }}
+          className={tabClass}
+          activeProps={{ className: tabActive }}
+        >
+          Jobs
+        </Link>
       </nav>
       <Outlet />
     </div>

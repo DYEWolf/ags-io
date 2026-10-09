@@ -122,6 +122,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 - EL SISTEMA DEBE registrar cada llamada a un proveedor de pago (proveedor, costo estimado, organización, sitio, job).
 - EL SISTEMA DEBE tener un tope mensual global, por proveedor y por organización, configurable por staff.
 - CUANDO un job fuera a exceder cualquier tope, EL SISTEMA DEBE omitirlo, registrar el motivo y enviar alerta (R-061).
+- *Diseño (M4)*: todo job de pago llama al proveedor dentro de `withPaidCall()` (src/server/spend.ts). Esta evalúa los topes y reserva el costo estimado en `spend_ledger` en una transacción serializada (advisory lock), así que llamadas concurrentes no pueden pasarse del tope; después cierra la fila con el costo real (o `error`, conservando el estimado). Topes en USD por mes calendario UTC: global (**obligatorio**: sin él no se gasta nada), por proveedor, por organización por defecto y por organización propio. La alerta se registra en `alerts`, deduplicada por tope y mes (`occurrences`), y se ve en Staff → Gasto; **el envío por Telegram llega con R-061 (M12)**. `pnpm spend:demo` simula llamadas en desarrollo.
 
 ### 4.2 Colectores gratuitos
 
@@ -232,6 +233,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 
 **R-070 Recursos**: contenedor `web` con `mem_limit` 384 MiB; contenedor `worker` con `mem_limit` 1 GiB; Postgres con 256 MiB.
 **R-071 Resiliencia**: jobs idempotentes, con reintentos exponenciales (máx 3; 30 s base, tope 1 h) y dead-letter por cola (`<cola>.dead`, retención 30 días) visible en el dashboard.
+- *Diseño (M4)*: Staff → Jobs muestra cada cola (en cola, activos, fallidos y dead-letter) y los jobs muertos con su error, que se busca en el intento fallido de la cola de origen (retenido según su `deleteAfterSeconds`). "Reintentar" usa `redrive` de pg-boss y devuelve el job a su cola con un nuevo ciclo de intentos; "Descartar" lo borra. Los datos se muestran con lo sensible oculto (tokens, URLs, cuerpos de correo).
 **R-072 Respaldos**: `pg_dump` diario + restic hacia Cloudflare R2, retención 7 diarios / 4 semanales / 6 mensuales. Restauración probada al menos una vez antes de tener clientes.
 **R-073 Seguridad**: secretos solo en `.env` (permisos 600, en `.gitignore`); Postgres solo en red interna; el dashboard es el único servicio en la red `web` de Caddy.
 **R-074 Observabilidad**: logs estructurados (JSON) a stdout con rotación de Docker; endpoint `/healthz` para web y heartbeat del worker en DB.
@@ -396,8 +398,12 @@ mentions       (run_id, entity_type brand|competitor, entity_id, cited_own_domai
 cited_domains  (run_id, domain, url)
 
 reports        (id, site_id, period, html_path, pdf_path, share_token, expires_at)
-spend_ledger   (id, provider, job, organization_id, site_id, cost_usd, at)
-alerts         (id, type, site_id, payload jsonb, sent_at)
+spend_ledger   (id, at, provider, job, job_id, organization_id, site_id, estimated_cost_usd,
+                cost_usd, status pending|ok|error)              -- se conserva al borrar org/sitio
+spend_limits   (scope global|provider|organization|organization_default, key, monthly_usd,
+                updated_by, updated_at)
+alerts         (id, type, dedupe_key unique, organization_id, site_id, payload jsonb,
+                occurrences, first_at, last_at, sent_at)
 settings       (key, value jsonb)
 ```
 
@@ -449,8 +455,8 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [x] T3.2 Estado activo/pausado + regla de dominio "pausado no gasta créditos".
 
 ### M4 — Gasto y operación (R-003, R-071)
-- [ ] T4.1 `spend_ledger` + topes global, por proveedor y por organización.
-- [ ] T4.2 Vista de staff: gasto del mes y jobs fallidos (dead-letter) con reintento manual.
+- [x] T4.1 `spend_ledger` + topes global, por proveedor y por organización.
+- [x] T4.2 Vista de staff: gasto del mes y jobs fallidos (dead-letter) con reintento manual.
 
 ### M5 — Deploy y respaldos (R-072, R-073) — requiere dominio (Q6)
 - [ ] T5.1 Dockerfile multi-stage endurecido, workflow CI (`pnpm check` + build) → GHCR → deploy por SSH.

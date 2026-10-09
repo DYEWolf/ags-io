@@ -19,6 +19,7 @@
     "db:studio": "drizzle-kit studio",
     "auth:check": "auth check schema --config src/server/auth.ts",
     "staff:create": "tsx src/server/cli/create-staff.ts",
+    "spend:demo": "tsx scripts/spend-demo.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
