@@ -1,4 +1,7 @@
 # Solo ajustes de pnpm; el proyecto es un único package (sin monorepo).
 allowBuilds:
+  esbuild: false
   # Los git hooks se instalan con el script `prepare` (lefthook install), no con su postinstall.
   lefthook: false
+minimumReleaseAgeExclude:
+  - drizzle-orm@0.45.4

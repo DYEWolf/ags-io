@@ -1,0 +1,106 @@
+# Base común a desarrollo y producción.
+#   Desarrollo: docker compose up            (aplica además docker-compose.override.yml)
+#   Producción: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+name: ags-io
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+x-app: &app
+  image: ${AGS_IMAGE:-ags-io:local}
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    NODE_ENV: production
+    TZ: UTC
+    DATABASE_URL: postgres://${POSTGRES_USER:-ags}:${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en .env}@postgres:5432/${POSTGRES_DB:-ags}
+  logging: *logging
+
+services:
+  postgres:
+    image: postgres:16.15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ags}
+      POSTGRES_DB: ${POSTGRES_DB:-ags}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en .env}
+      TZ: UTC
+      PGTZ: UTC
+    # Ajustado a mem_limit 256 MiB (R-070).
+    command:
+      - postgres
+      - -c
+      - timezone=UTC
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - effective_cache_size=128MB
+      - -c
+      - work_mem=2MB
+      - -c
+      - maintenance_work_mem=16MB
+      - -c
+      - max_connections=40
+      - -c
+      - max_parallel_workers_per_gather=0
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [db]
+    mem_limit: 256m
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging: *logging
+
+  web:
+    <<: *app
+    build:
+      context: .
+    command: ['node', 'dist/node/web.mjs']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [db, egress]
+    mem_limit: 384m
+    stop_grace_period: 15s
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    <<: *app
+    build:
+      context: .
+    command: ['node', 'dist/node/worker.mjs']
+    # Espera a que `web` esté sano: ahí ya se aplicaron las migraciones.
+    depends_on:
+      web:
+        condition: service_healthy
+    networks: [db, egress]
+    mem_limit: 1g
+    # Margen para que los jobs en curso terminen (boss.stop con timeout de 30 s).
+    stop_grace_period: 40s
+
+networks:
+  # Red interna: sin salida a internet ni puertos publicados (R-073).
+  db:
+    internal: true
+  # Salida a internet para APIs externas (Resend, GSC, etc.).
+  egress: {}
+
+volumes:
+  pgdata:

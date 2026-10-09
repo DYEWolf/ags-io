@@ -1,0 +1,15 @@
+# Producción: imagen de GHCR y red externa de Caddy (el proxy es el único punto de entrada).
+services:
+  web:
+    image: ${AGS_IMAGE:?define AGS_IMAGE, p. ej. ghcr.io/<owner>/ags-io:<tag>}
+    build: !reset null
+    networks: [db, egress, caddy]
+
+  worker:
+    image: ${AGS_IMAGE:?define AGS_IMAGE, p. ej. ghcr.io/<owner>/ags-io:<tag>}
+    build: !reset null
+
+networks:
+  caddy:
+    external: true
+    name: ${CADDY_NETWORK:-web}

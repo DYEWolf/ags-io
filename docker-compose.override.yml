@@ -1,0 +1,20 @@
+# Solo desarrollo (docker compose lo aplica automáticamente). En producción no se carga.
+services:
+  postgres:
+    # Publica Postgres solo en loopback para `pnpm dev` y drizzle-kit desde el host.
+    networks: [db, egress]
+    ports:
+      - '127.0.0.1:5432:5432'
+
+  web:
+    ports:
+      - '127.0.0.1:3000:3000'
+
+  mailpit:
+    image: axllent/mailpit:v1.31
+    restart: unless-stopped
+    networks: [egress]
+    ports:
+      - '127.0.0.1:8025:8025' # bandeja web
+      - '127.0.0.1:1025:1025' # SMTP
+    mem_limit: 64m

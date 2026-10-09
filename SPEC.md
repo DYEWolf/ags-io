@@ -225,10 +225,12 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 ### 4.8 No funcionales
 
 **R-070 Recursos**: contenedor `web` con `mem_limit` 384 MiB; contenedor `worker` con `mem_limit` 1 GiB; Postgres con 256 MiB.
-**R-071 Resiliencia**: jobs idempotentes, con reintentos exponenciales (máx 3) y dead-letter visible en el dashboard.
+**R-071 Resiliencia**: jobs idempotentes, con reintentos exponenciales (máx 3; 30 s base, tope 1 h) y dead-letter por cola (`<cola>.dead`, retención 30 días) visible en el dashboard.
 **R-072 Respaldos**: `pg_dump` diario + restic hacia Cloudflare R2, retención 7 diarios / 4 semanales / 6 mensuales. Restauración probada al menos una vez antes de tener clientes.
 **R-073 Seguridad**: secretos solo en `.env` (permisos 600, en `.gitignore`); Postgres solo en red interna; el dashboard es el único servicio en la red `web` de Caddy.
 **R-074 Observabilidad**: logs estructurados (JSON) a stdout con rotación de Docker; endpoint `/healthz` para web y heartbeat del worker en DB.
+- `/healthz` responde 200 solo si Postgres responde y no hay migraciones pendientes; si no, 503. Informa el estado del worker (`ok`/`stale`/`missing`) sin afectar el código HTTP.
+- El heartbeat es un job de pg-boss con cron cada minuto: prueba cron, cola y worker de punta a punta. Sin latido en 3 min = worker `stale`.
 **R-075 Zona horaria**: almacenar todo en UTC; mostrar en America/Mexico_City.
 
 ---
@@ -268,11 +270,12 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 
 | Capa | Elección | Nota |
 |---|---|---|
-| Lenguaje | TypeScript estricto | Node 22 LTS |
+| Lenguaje | TypeScript estricto | Node 22 LTS; TypeScript 6.0.x (typescript-eslint aún no soporta TS 7) |
 | Web | TanStack Start (React) | server functions para acciones del dashboard |
 | UI | Tailwind + componentes propios/shadcn | sin dependencias pesadas de charts; usar una librería ligera |
 | DB | PostgreSQL 16 local | JSONB para respuestas crudas |
-| ORM | Drizzle + drizzle-kit | migraciones versionadas, aplicadas en el arranque del contenedor `web` |
+| ORM | Drizzle 0.45 (estable) + drizzle-kit | migraciones versionadas, aplicadas en el arranque del contenedor `web` con advisory lock |
+| Servidor Node | srvx + entrypoints propios empaquetados con esbuild | `dist/node/web.mjs` (migra, sirve estáticos, delega en Start) y `dist/node/worker.mjs`; sin Nitro (beta) |
 | Colas/cron | pg-boss | sin Redis |
 | Navegador | Playwright (Chromium) | solo en worker |
 | Validación | Zod | entradas, configs y respuestas de APIs |
@@ -294,6 +297,7 @@ ags-io/
   .env.example
   Dockerfile
   docker-compose.yml       # base: dev y prod (Postgres interno, web, worker)
+  docker-compose.override.yml # solo dev (auto-cargado): puertos en loopback y Mailpit
   docker-compose.prod.yml  # override prod: red externa de Caddy, imágenes GHCR
   drizzle.config.ts
   lefthook.yml
@@ -322,6 +326,7 @@ ags-io/
     audit/                 # fetch sin JS, playwright, jsonld, robots, sitemap
     bots/                  # parser de logs, clasificador, verificación
     lib/                   # utilidades (env, costos, dinero, fechas, logger)
+  scripts/                 # tareas de desarrollo (migrar, build de entrypoints Node)
 ```
 
 Regla: `domain/` no importa nada de `providers/`, `db/` ni frameworks. La hace cumplir ESLint (`no-restricted-imports`).
@@ -344,7 +349,7 @@ two_factor     (id, user_id, secret, backup_codes)
 organization   (id, name, slug, created_at)                       -- reemplaza a clients
 member         (id, organization_id, user_id, role owner|admin|member, created_at)
 login_failures (ip, attempted_at)                                  -- R-001 bloqueo por IP
-worker_heartbeat (worker_id, beat_at, version)                     -- R-074
+worker_heartbeat (worker_id, version, started_at, beat_at)        -- R-074
 
 sites          (id, organization_id, domain, gsc_property, bing_site, city, lat, lng,
                 locale, country, business_json jsonb, status, created_at)
@@ -414,9 +419,9 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 ### M1 — Base (R-070, R-071, R-073–R-075)
 - [x] T1.1 Scaffold TanStack Start + TS estricto + pnpm + ESLint (regla de `domain/`) + Prettier + `pnpm check`.
 - [x] T1.2 lefthook + commitlint, hooks de Claude Code, skill `/ship-task`, plantilla de PR.
-- [ ] T1.3 `docker-compose.yml` (Postgres 16 en red interna, `mem_limit`, Mailpit en dev) + `docker-compose.prod.yml` + Dockerfile base.
-- [ ] T1.4 Env validado con Zod, logger JSON, UTC; Drizzle + migraciones aplicadas al arrancar `web`.
-- [ ] T1.5 Worker con pg-boss (reintentos exponenciales máx 3, dead-letter) + heartbeat + `/healthz`.
+- [x] T1.3 `docker-compose.yml` (Postgres 16 en red interna, `mem_limit`, Mailpit en dev) + `docker-compose.prod.yml` + Dockerfile base.
+- [x] T1.4 Env validado con Zod, logger JSON, UTC; Drizzle + migraciones aplicadas al arrancar `web`.
+- [x] T1.5 Worker con pg-boss (reintentos exponenciales máx 3, dead-letter) + heartbeat + `/healthz`.
 - **E2E del admin**: `docker compose up` levanta todo; `/healthz` responde 200 y 503 si Postgres cae; el heartbeat del worker se actualiza en DB; un commit con mensaje inválido es rechazado.
 
 ### M2 — Cuentas (R-001, R-004, R-005, R-006, R-007)
