@@ -47,8 +47,14 @@ export function describeFinding(rule: RuleId, detail: Detail): string | null {
       return `${str(d['sitemap'])}: ${str(d['error'])}`
     case 'sitemap_foreign_url':
       return `${num(d['count'])} URL(s), p. ej. ${list(d['sample']).slice(0, 3).join(', ')}`
-    case 'crawl_limit':
-      return `Límite: ${num(d['limit'])} páginas.`
+    case 'crawl_limit': {
+      const oversized = list(d['oversized'])
+      return `Límite: ${num(d['limit'])} páginas.${
+        oversized.length > 0
+          ? ` Sitemaps de más de 10 MB sin leer: ${oversized.slice(0, 3).join(', ')}`
+          : ''
+      }`
+    }
     case 'title_length':
       return `${num(d['length'])} caracteres: ${quote(str(d['title']))}`
     case 'description_length':
@@ -94,6 +100,45 @@ export function describeFinding(rule: RuleId, detail: Detail): string | null {
       return str(d['error']) || null
     case 'render_limit':
       return `Límite: ${num(d['limit'])} páginas.`
+    case 'jsonld_invalid':
+      return `${str(d['message'])}: ${quote(str(d['excerpt']), 60)}`
+    case 'jsonld_context':
+    case 'jsonld_unknown_type':
+      return str(d['type'])
+    case 'jsonld_unknown_property':
+    case 'jsonld_property_mismatch':
+      return `${str(d['type'])} → ${str(d['property'])}`
+    case 'jsonld_missing_required':
+      return `${str(d['type'])}: falta ${list(d['missing'])
+        .map((option) => option.replace(/\|/g, ' o '))
+        .join(', ')}`
+    case 'jsonld_deprecated':
+      return `${str(d['term'])} → usa ${str(d['replacement'])}`
+    case 'jsonld_js_only':
+      return `${num(d['blocks'])} bloque(s) solo con JavaScript.`
+    case 'nap_mismatch': {
+      const labels: Record<string, string> = {
+        name: 'nombre',
+        phone: 'teléfono',
+        streetAddress: 'calle',
+        city: 'ciudad',
+        region: 'estado',
+        postalCode: 'código postal',
+      }
+      const fields = Array.isArray(d['fields']) ? (d['fields'] as unknown[]) : []
+      return fields
+        .map((item) => {
+          const f = (item ?? {}) as Record<string, unknown>
+          const found = str(f['found'])
+          return `${labels[str(f['field'])] ?? str(f['field'])}: ${
+            found ? quote(found, 50) : 'no está'
+          } (esperado ${quote(str(f['expected']), 50)})`
+        })
+        .join(' · ')
+    }
+    case 'jsonld_missing':
+    case 'localbusiness_missing':
+      return null
     case 'title_missing':
     case 'description_missing':
     case 'h1_missing':

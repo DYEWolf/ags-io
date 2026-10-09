@@ -90,6 +90,26 @@ const optionalText = z
   .optional()
   .transform((value) => value ?? null)
 
+/** Texto opcional con longitud máxima y validación propia (vacío = null). */
+const optionalField = (
+  max: number,
+  check?: { test: (value: string) => boolean; message: string },
+) =>
+  z
+    .string()
+    .trim()
+    .max(max, `Máximo ${String(max)} caracteres.`)
+    .refine((value) => value === '' || !check || check.test(value), check?.message)
+    .nullable()
+    .optional()
+    .transform((value) => (value ? value.replace(/\s+/g, ' ') : null))
+
+/** Teléfono: dígitos con +, espacios, guiones, puntos o paréntesis; entre 7 y 15 dígitos. */
+export function isPhone(value: string): boolean {
+  const digits = value.replace(/\D/g, '')
+  return /^\+?[\d\s().-]+$/.test(value) && digits.length >= 7 && digits.length <= 15
+}
+
 /** Datos editables de un sitio. Se valida igual en el formulario y en el servidor. */
 export const siteInputSchema = z
   .object({
@@ -108,6 +128,14 @@ export const siteInputSchema = z
       }),
     gscProperty: optionalText,
     bingSite: optionalText,
+    businessName: optionalField(150),
+    streetAddress: optionalField(200),
+    postalCode: optionalField(12, {
+      test: (value) => /^[A-Za-z0-9][A-Za-z0-9 -]{1,11}$/.test(value),
+      message: 'Código postal inválido.',
+    }),
+    region: optionalField(100),
+    phone: optionalField(30, { test: isPhone, message: 'Teléfono inválido (7 a 15 dígitos).' }),
     city: z.string().trim().min(1, 'Escribe la ciudad.').max(120),
     lat: z.coerce
       .number({ message: 'Latitud inválida.' })

@@ -52,6 +52,7 @@ curl localhost:3000/healthz
 | `pnpm staff:create` | crea el primer staff (o `--promote` a un usuario existente) |
 | `pnpm spend:demo --provider serper --cost 0.5 [--org <slug>] [--times N]` | simula llamadas de pago para probar los topes (solo desarrollo) |
 | `pnpm audit:run <dominio\|id> [--inline]` | lanza una auditoría técnica sin la espera de 24 h; `--inline` la corre en este proceso (necesita Chromium local: `pnpm exec playwright-core install --only-shell chromium`) |
+| `pnpm schemaorg:update` | regenera `src/domain/audit/schemaorg.json` con la versión vigente de schema.org |
 | `pnpm build` / `pnpm start` / `pnpm start:worker` | build y ejecución de producción |
 
 ## Convenciones

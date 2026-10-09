@@ -70,9 +70,21 @@ export function SiteForm({
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     const values = Object.fromEntries(
-      ['domain', 'gscProperty', 'bingSite', 'city', 'lat', 'lng', 'locale', 'country'].map(
-        (name) => [name, formText(form, name)],
-      ),
+      [
+        'domain',
+        'gscProperty',
+        'bingSite',
+        'businessName',
+        'streetAddress',
+        'postalCode',
+        'region',
+        'phone',
+        'city',
+        'lat',
+        'lng',
+        'locale',
+        'country',
+      ].map((name) => [name, formText(form, name)]),
     )
     setPending(true)
     setFailure('')
@@ -170,6 +182,66 @@ export function SiteForm({
           <FieldError message={errors['country']} />
         </label>
       </div>
+
+      <fieldset className="flex flex-col gap-4">
+        <legend className="mb-1 text-sm font-semibold">Datos del negocio (opcional)</legend>
+        <p className="-mt-2 text-xs text-neutral-500">
+          Tal como aparecen en Google Business Profile. La auditoría los compara con los datos
+          estructurados (LocalBusiness) del sitio.
+        </p>
+        <div className="flex flex-col gap-1">
+          <Field
+            label="Nombre del negocio"
+            name="businessName"
+            defaultValue={site?.businessName ?? ''}
+            maxLength={150}
+          />
+          <FieldError message={errors['businessName']} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Field
+            label="Calle y número"
+            name="streetAddress"
+            defaultValue={site?.streetAddress ?? ''}
+            placeholder="Av. Reforma 222, Col. Juárez"
+            maxLength={200}
+          />
+          <FieldError message={errors['streetAddress']} />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1">
+            <Field
+              label="Estado"
+              name="region"
+              defaultValue={site?.region ?? ''}
+              placeholder="Ciudad de México"
+              maxLength={100}
+            />
+            <FieldError message={errors['region']} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Field
+              label="Código postal"
+              name="postalCode"
+              defaultValue={site?.postalCode ?? ''}
+              inputMode="numeric"
+              maxLength={12}
+            />
+            <FieldError message={errors['postalCode']} />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Field
+            label="Teléfono"
+            name="phone"
+            type="tel"
+            defaultValue={site?.phone ?? ''}
+            placeholder="+52 55 1234 5678"
+            maxLength={30}
+          />
+          <FieldError message={errors['phone']} />
+        </div>
+      </fieldset>
 
       <fieldset className="flex flex-col gap-4">
         <legend className="mb-2 text-sm font-semibold">

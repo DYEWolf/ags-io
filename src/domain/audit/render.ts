@@ -7,6 +7,8 @@ import { normalizeUrl } from '~/domain/audit/urls'
 export interface PageVersion {
   facts: PageFacts
   text: string
+  /** Contenido de cada `<script type="application/ld+json">`. */
+  jsonLd: string[]
 }
 
 /** Diferencia mínima para considerar que JS añade contenido relevante. */

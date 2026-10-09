@@ -4,3 +4,4 @@ pnpm-lock.yaml
 src/routeTree.gen.ts
 src/db/migrations
 *.md
+src/domain/audit/schemaorg.json

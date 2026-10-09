@@ -8,8 +8,11 @@ import { normalizeUrl } from '~/domain/audit/urls'
 
 /** Sitemaps leídos como máximo por auditoría (índices incluidos). */
 const MAX_SITEMAPS = 50
-/** Límite de sitemaps.org: 50 MB sin comprimir. */
-const MAX_SITEMAP_BYTES = 50 * 1024 * 1024
+/**
+ * Bytes leídos por sitemap. sitemaps.org admite hasta 50 MB, pero solo se auditan las primeras
+ * URLs (`maxUrls`) y parsear 50 MB de XML dispararía la memoria del worker (R-070).
+ */
+export const MAX_SITEMAP_BYTES = 10 * 1024 * 1024
 
 export interface SitemapEntry {
   url: string
@@ -33,8 +36,10 @@ export interface SitemapDiscovery {
   source: 'robots' | 'default' | 'none'
   entries: SitemapEntry[]
   problems: SitemapProblem[]
-  /** Se dejaron de leer sitemaps o URLs al llegar a `maxUrls`/`MAX_SITEMAPS`. */
+  /** Se dejaron de leer sitemaps o URLs al llegar a `maxUrls`, `MAX_SITEMAPS` o el tamaño máximo. */
   capped: boolean
+  /** Sitemaps que superan `MAX_SITEMAP_BYTES` y no se leyeron. */
+  oversized: string[]
 }
 
 const parser = new XMLParser({
@@ -52,10 +57,16 @@ interface ParsedSitemap {
 
 const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '')
 
-function decode(result: FetchResult): string {
+/** Texto del sitemap (descomprimido si es .gz); null si supera `MAX_SITEMAP_BYTES`. */
+function decode(result: FetchResult): string | null {
   const gz = result.body.length > 2 && result.body[0] === 0x1f && result.body[1] === 0x8b
-  const body = gz ? gunzipSync(result.body, { maxOutputLength: MAX_SITEMAP_BYTES }) : result.body
-  return body.toString('utf8')
+  if (!gz) return result.body.toString('utf8')
+  try {
+    return gunzipSync(result.body, { maxOutputLength: MAX_SITEMAP_BYTES }).toString('utf8')
+  } catch (error) {
+    if (error instanceof RangeError) return null
+    throw error
+  }
 }
 
 export async function discoverSitemaps(
@@ -87,6 +98,7 @@ export async function discoverSitemaps(
   const problems: SitemapProblem[] = []
   const sitemaps: string[] = []
   let capped = false
+  const oversized: string[] = []
 
   while (queue.length > 0) {
     const sitemap = queue.shift()
@@ -114,13 +126,21 @@ export async function discoverSitemaps(
       continue
     }
     if (result.truncated) {
-      problems.push({ sitemap, error: 'supera 50 MB' })
+      // No es un error del sitio: es nuestro límite de lectura.
+      oversized.push(sitemap)
+      capped = true
       continue
     }
 
     let parsed: ParsedSitemap
     try {
-      parsed = parser.parse(decode(result)) as ParsedSitemap
+      const xml = decode(result)
+      if (xml === null) {
+        oversized.push(sitemap)
+        capped = true
+        continue
+      }
+      parsed = parser.parse(xml) as ParsedSitemap
     } catch (error) {
       problems.push({
         sitemap,
@@ -163,5 +183,6 @@ export async function discoverSitemaps(
     entries,
     problems,
     capped,
+    oversized,
   }
 }

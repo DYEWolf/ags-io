@@ -11,6 +11,11 @@ export interface SiteView {
   domain: string
   gscProperty: string | null
   bingSite: string | null
+  businessName: string | null
+  streetAddress: string | null
+  postalCode: string | null
+  region: string | null
+  phone: string | null
   city: string
   lat: number
   lng: number
@@ -31,6 +36,11 @@ function toView(site: Site): SiteView {
     domain: site.domain,
     gscProperty: site.gscProperty,
     bingSite: site.bingSite,
+    businessName: site.businessName,
+    streetAddress: site.streetAddress,
+    postalCode: site.postalCode,
+    region: site.region,
+    phone: site.phone,
     city: site.city,
     lat: site.lat,
     lng: site.lng,

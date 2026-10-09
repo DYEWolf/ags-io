@@ -10,6 +10,7 @@ const NAVIGATION_TIMEOUT_MS = 30_000
 /** Espera extra a que la red quede en reposo tras el DOMContentLoaded. */
 const SETTLE_TIMEOUT_MS = 5_000
 const REQUEST_TIMEOUT_MS = 20_000
+const JS_HEAP_MB = 256
 const SUBRESOURCE_MAX_BYTES = 10 * 1024 * 1024
 /** No aportan texto ni estructura: no se descargan. */
 const BLOCKED_TYPES = new Set(['image', 'media', 'font'])
@@ -37,36 +38,43 @@ function pick(headers: Record<string, string>, drop: Set<string>) {
 export class Renderer {
   private constructor(
     private readonly browser: Browser,
-    private readonly context: BrowserContext,
     private readonly signal: AbortSignal,
   ) {}
 
-  /** Lanza Chromium (headless shell) con un contexto aislado para una auditoría. */
+  /** Lanza Chromium (headless shell) para una auditoría. */
   static async launch(signal: AbortSignal): Promise<Renderer> {
     const browser = await chromium.launch({
       headless: true,
-      args: ['--disable-dev-shm-usage', '--disable-gpu', '--disable-extensions'],
+      args: [
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-extensions',
+        // Tope del heap de JavaScript: un sitio pesado no se lleva la RAM de la VPS (R-070).
+        `--js-flags=--max-old-space-size=${String(JS_HEAP_MB)}`,
+      ],
     })
-    try {
-      const context = await browser.newContext({
-        userAgent: AUDIT_USER_AGENT,
-        locale: 'es-MX',
-        serviceWorkers: 'block',
-        acceptDownloads: false,
-        javaScriptEnabled: true,
-        viewport: { width: 1280, height: 900 },
-      })
-      const renderer = new Renderer(browser, context, signal)
-      await context.route('**/*', (route) => renderer.proxy(route))
-      await context.routeWebSocket(
-        () => true,
-        (ws) => ws.close(),
-      )
-      return renderer
-    } catch (error) {
-      await browser.close()
-      throw error
-    }
+    return new Renderer(browser, signal)
+  }
+
+  /**
+   * Un contexto nuevo por página: sin caché, cookies ni memoria acumulada entre páginas. Con un
+   * solo contexto, un sitio con mucho JavaScript llevó el worker a 830 MiB en 90 páginas.
+   */
+  private async newContext(): Promise<BrowserContext> {
+    const context = await this.browser.newContext({
+      userAgent: AUDIT_USER_AGENT,
+      locale: 'es-MX',
+      serviceWorkers: 'block',
+      acceptDownloads: false,
+      javaScriptEnabled: true,
+      viewport: { width: 1280, height: 900 },
+    })
+    await context.route('**/*', (route) => this.proxy(route))
+    await context.routeWebSocket(
+      () => true,
+      (ws) => ws.close(),
+    )
+    return context
   }
 
   private async proxy(route: Route): Promise<void> {
@@ -109,8 +117,9 @@ export class Renderer {
   /** Abre la URL, espera a que se asiente y devuelve el DOM resultante serializado. */
   async render(url: string): Promise<RenderResult> {
     this.signal.throwIfAborted()
-    const page = await this.context.newPage()
+    const context = await this.newContext()
     try {
+      const page = await context.newPage()
       const response = await page.goto(url, {
         waitUntil: 'domcontentloaded',
         timeout: NAVIGATION_TIMEOUT_MS,
@@ -124,7 +133,7 @@ export class Renderer {
         html: await page.content(),
       }
     } finally {
-      await page.close().catch(() => undefined)
+      await context.close().catch(() => undefined)
     }
   }
 
@@ -134,7 +143,6 @@ export class Renderer {
   }
 
   async close(): Promise<void> {
-    await this.context.close().catch(() => undefined)
     await this.browser.close().catch(() => undefined)
   }
 }

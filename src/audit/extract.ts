@@ -72,7 +72,10 @@ export function extractPage($: CheerioAPI, url: string, xRobotsTag: string): Pag
     metaRobots,
     textLength: text.length,
   }
-  return { facts, text }
+  const jsonLd = head('script[type]')
+    .filter((element) => /^application\/ld\+json\b/i.test((element.attr('type') ?? '').trim()))
+    .map((element) => element.text())
+  return { facts, text, jsonLd }
 }
 
 export function isHtml(contentType: string): boolean {

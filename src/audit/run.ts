@@ -10,6 +10,7 @@ import { db } from '~/db/client'
 import { auditFindings, auditPages, audits, sites, type AuditSummary, type Site } from '~/db/schema'
 import { evaluateDuplicates, evaluatePage, type PageFacts } from '~/domain/audit/onpage'
 import { compareRender, type PageVersion } from '~/domain/audit/render'
+import { StructuredDataCollector } from '~/domain/audit/structured'
 import { RULES, SEVERITIES, severityOf, type Finding, type Severity } from '~/domain/audit/rules'
 import { isSiteUrl, siteRoot } from '~/domain/audit/urls'
 import { env } from '~/lib/env'
@@ -31,7 +32,8 @@ export interface RunContext {
 /** Hallazgos del sitio derivados del descubrimiento de sitemaps. */
 function sitemapFindings(discovery: SitemapDiscovery, foreign: string[]): Finding[] {
   const findings: Finding[] = []
-  if (discovery.sitemaps.length === 0) {
+  // Solo "sin sitemap" si de verdad no lo hay: uno demasiado grande lo reporta crawl_limit.
+  if (discovery.sitemaps.length === 0 && discovery.oversized.length === 0) {
     findings.push({
       rule: 'sitemap_missing',
       url: null,
@@ -50,7 +52,11 @@ function sitemapFindings(discovery: SitemapDiscovery, foreign: string[]): Findin
     })
   }
   if (discovery.capped) {
-    findings.push({ rule: 'crawl_limit', url: null, detail: { limit: MAX_PAGES } })
+    findings.push({
+      rule: 'crawl_limit',
+      url: null,
+      detail: { limit: MAX_PAGES, oversized: discovery.oversized },
+    })
   }
   return findings
 }
@@ -102,6 +108,7 @@ function checkPage(auditId: string, url: string, result: FetchResult): PageOutco
     canonical: facts.canonicals[0] ?? null,
     robots: facts.robots,
     textLength: facts.textLength,
+    jsonLdBlocks: version.jsonLd.length,
     redirects: result.redirects,
   }
   return { row, version, findings }
@@ -115,7 +122,11 @@ async function renderPage(
   renderer: Renderer,
   url: string,
   raw: PageVersion,
-): Promise<{ findings: Finding[]; rendered: Record<string, unknown> | null }> {
+): Promise<{
+  findings: Finding[]
+  rendered: Record<string, unknown> | null
+  version: PageVersion | null
+}> {
   let result
   try {
     result = await renderer.render(raw.facts.url)
@@ -124,6 +135,7 @@ async function renderPage(
     return {
       findings: [{ rule: 'render_failed', url, detail: { error: describeRenderError(error) } }],
       rendered: null,
+      version: null,
     }
   }
   // El DOM serializado ya no lleva X-Robots-Tag: se conserva el de la respuesta sin JS.
@@ -141,7 +153,9 @@ async function renderPage(
       textLength: rendered.facts.textLength,
       title: rendered.facts.titles[0] ?? null,
       h1Count: rendered.facts.h1s.length,
+      jsonLdBlocks: rendered.jsonLd.length,
     },
+    version: rendered,
   }
 }
 
@@ -219,6 +233,7 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
   let checked = 0
   let rendered = 0
   let renderer: Renderer | null = null
+  const structured = new StructuredDataCollector()
 
   try {
     for (const [index, url] of urls.entries()) {
@@ -239,16 +254,19 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
 
       if (outcome.version) {
         pages.push({ ...outcome.version.facts, url })
+        let renderedVersion: PageVersion | null = null
         if (rendered < MAX_RENDERED) {
           renderer ??= await Renderer.launch(signal)
           const result = await renderPage(renderer, url, outcome.version)
           outcome.findings.push(...result.findings)
           if (outcome.row.facts) outcome.row.facts['rendered'] = result.rendered
+          renderedVersion = result.version
           rendered += 1
         } else if (rendered === MAX_RENDERED) {
           findings.push({ rule: 'render_limit', url: null, detail: { limit: MAX_RENDERED } })
           rendered += 1
         }
+        outcome.findings.push(...structured.addPage(url, outcome.version, renderedVersion))
       }
 
       await db.insert(auditPages).values(outcome.row).onConflictDoNothing()
@@ -260,6 +278,16 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
   }
 
   findings.push(...evaluateDuplicates(pages))
+  findings.push(
+    ...structured.finish({
+      name: site.businessName,
+      streetAddress: site.streetAddress,
+      city: site.city,
+      region: site.region,
+      postalCode: site.postalCode,
+      phone: site.phone,
+    }),
+  )
   await insertFindings(auditId, findings)
 
   const summary = summarize(discovery, checked, Math.min(rendered, MAX_RENDERED), findings)
@@ -268,7 +296,20 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
     .set({ status: 'done', finishedAt: new Date(), summary, error: null })
     .where(eq(audits.id, auditId))
   log.info(
-    { siteId: site.id, auditId, pages: checked, counts: summary.counts },
+    {
+      siteId: site.id,
+      auditId,
+      pages: checked,
+      rendered: summary.pagesRendered,
+      counts: summary.counts,
+      // Memoria del worker al terminar (MiB): vigila R-070 en la VPS compartida.
+      memory: Object.fromEntries(
+        Object.entries(process.memoryUsage()).map(([key, bytes]) => [
+          key,
+          Math.round(bytes / 1_048_576),
+        ]),
+      ),
+    },
     'auditoría terminada',
   )
 }

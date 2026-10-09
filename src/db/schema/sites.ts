@@ -23,6 +23,12 @@ export const sites = pgTable(
     lng: doublePrecision('lng').notNull(),
     locale: text('locale').notNull(),
     country: text('country').notNull(),
+    // Datos del negocio (opcionales): se comparan con el JSON-LD LocalBusiness (R-031).
+    businessName: text('business_name'),
+    streetAddress: text('street_address'),
+    postalCode: text('postal_code'),
+    region: text('region'),
+    phone: text('phone'),
     status: text('status').$type<SiteStatus>().notNull().default('active'),
     createdAt: tstz('created_at').notNull().defaultNow(),
     updatedAt: tstz('updated_at')

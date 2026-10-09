@@ -200,6 +200,74 @@ export const RULES = {
     title: 'Se alcanzó el límite de páginas renderizadas',
     fix: 'Solo se compararon con JavaScript las primeras páginas del sitio.',
   },
+
+  // --- Datos estructurados (R-031) ---
+  jsonld_invalid: {
+    severity: 'error',
+    category: 'structured',
+    title: 'Bloque JSON-LD con JSON inválido',
+    fix: 'Corrige la sintaxis: un bloque inválido se ignora por completo.',
+  },
+  jsonld_context: {
+    severity: 'warning',
+    category: 'structured',
+    title: 'JSON-LD sin @context de schema.org',
+    fix: 'Añade "@context": "https://schema.org" al bloque.',
+  },
+  jsonld_unknown_type: {
+    severity: 'error',
+    category: 'structured',
+    title: 'Tipo que no existe en schema.org',
+    fix: 'Usa un tipo de schema.org (revisa mayúsculas y ortografía).',
+  },
+  jsonld_unknown_property: {
+    severity: 'warning',
+    category: 'structured',
+    title: 'Propiedad que no existe en schema.org',
+    fix: 'Usa una propiedad de schema.org (revisa mayúsculas y ortografía).',
+  },
+  jsonld_property_mismatch: {
+    severity: 'warning',
+    category: 'structured',
+    title: 'Propiedad que no corresponde a su tipo',
+    fix: 'Mueve la propiedad al tipo correcto o cambia el tipo del nodo.',
+  },
+  jsonld_missing_required: {
+    severity: 'error',
+    category: 'structured',
+    title: 'Faltan propiedades obligatorias para resultados enriquecidos',
+    fix: 'Añade las propiedades que Google exige para ese tipo.',
+  },
+  jsonld_deprecated: {
+    severity: 'notice',
+    category: 'structured',
+    title: 'Término de schema.org reemplazado',
+    fix: 'Usa el término que lo sustituye.',
+  },
+  jsonld_missing: {
+    severity: 'warning',
+    category: 'structured',
+    title: 'La portada no tiene datos estructurados',
+    fix: 'Publica JSON-LD en la portada (Organization o LocalBusiness y WebSite).',
+  },
+  jsonld_js_only: {
+    severity: 'warning',
+    category: 'structured',
+    title: 'El JSON-LD solo aparece con JavaScript',
+    fix: 'Inclúyelo en el HTML inicial: los bots de IA no ejecutan JavaScript.',
+  },
+  localbusiness_missing: {
+    severity: 'warning',
+    category: 'structured',
+    title: 'No hay JSON-LD LocalBusiness',
+    fix: 'Publica un LocalBusiness (o su subtipo) con el nombre, la dirección y el teléfono del negocio.',
+  },
+  nap_mismatch: {
+    severity: 'warning',
+    category: 'structured',
+    title: 'Nombre, dirección o teléfono distintos a los del negocio',
+    fix: 'Haz que el JSON-LD coincida con los datos del negocio registrados en el sitio (y con Google Business Profile).',
+  },
 } as const satisfies Record<string, RuleInfo>
 
 export type RuleId = keyof typeof RULES

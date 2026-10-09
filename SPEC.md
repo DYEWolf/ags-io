@@ -114,7 +114,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 
 **R-002 Gestión de sitios**
 - EL SISTEMA DEBE permitir CRUD de sitios dentro de una organización (una organización puede tener N sitios). La organización reemplaza a la entidad "cliente" de v0.1.
-- Cada sitio DEBE tener: dominio canónico, propiedad GSC, sitio Bing, ubicación principal (lat/lng, ciudad), idioma/país, estado (activo/pausado).
+- Cada sitio DEBE tener: dominio canónico, propiedad GSC, sitio Bing, ubicación principal (lat/lng, ciudad), idioma/país, estado (activo/pausado). Opcionalmente, los datos del negocio (nombre, calle y número, estado, código postal, teléfono) que audita R-031.
 - CUANDO un sitio está pausado, EL SISTEMA NO DEBE ejecutar jobs que consuman créditos para ese sitio. Tampoco se audita (R-034).
 - *Diseño (M3)*: el dominio se normaliza en `domain/sites.ts` (minúsculas, sin esquema/ruta/puerto, punycode; se rechazan IPs y nombres sin TLD) y es **único por organización**, contando `www.` como el mismo sitio (`domain_key`). No es único global: así nadie puede ocupar un dominio ajeno ni averiguar qué dominios son clientes; la propiedad real se comprueba con GSC (M6). La propiedad GSC (`sc-domain:` o prefijo de URL) y el sitio de Bing deben pertenecer al dominio; ambos son opcionales hasta M6. Todo job de pago obtiene el sitio con `siteForPaidWork()` (src/server/sites.ts), que devuelve `null` si está pausado; la regla pura es `siteAllowsPaidWork()`.
 
@@ -163,12 +163,13 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 **R-030 HTML sin JavaScript**
 - Por cada URL del sitemap, EL SISTEMA DEBE obtener el HTML con una petición HTTP simple (sin JS) y verificar: `<title>`, meta description, `<h1>` único, canonical, meta robots, presencia de texto principal (umbral configurable de caracteres).
 - EL SISTEMA DEBE comparar contra el DOM renderizado con Playwright y reportar contenido que **solo** existe tras ejecutar JS.
-- *Diseño (M8)*: las URLs salen de los sitemaps declarados en `robots.txt` (o `/sitemap.xml` si no hay), con índices y gzip; sin sitemap se audita la portada y se reporta. Topes por auditoría: 500 URLs, respuestas de 5 MB (sitemaps 50 MB), 250 ms entre peticiones, user-agent propio `ags-io-audit`. **SSRF**: el cliente HTTP (`src/audit/http.ts`) solo conecta por http(s) a los puertos 80/443 y valida la IP en el `lookup` de cada socket (también tras redirecciones y contra DNS rebinding), rechazando direcciones privadas, locales y reservadas. Texto principal = `<main>` o, si no hay, el `<body>` sin navegación; umbral `AUDIT_MIN_TEXT_CHARS` (250 por defecto). Las reglas son un catálogo en `domain/audit/rules.ts` con severidad `error`/`warning`/`notice`; sus ids no se renombran (rompería el diff).
-- *Diseño (M8, render)*: Chromium headless shell vía `playwright-core`, una instancia por auditoría y una página a la vez, hasta 100 páginas por auditoría (portada primero). **Todo** el tráfico del navegador se intercepta (`context.route`) y se hace con el cliente HTTP del auditor, así que Chromium no abre conexiones propias y hereda la protección SSRF; WebSockets y service workers bloqueados, imágenes, fuentes y video no se descargan. Se compara texto principal, title, description, canonical, meta robots y h1: contenido que solo existe con JS (`js_dependent_content` si sin JS no llega al umbral, `js_added_content` si JS añade ≥ 300 caracteres y ≥ 30 %), cabeceras cambiadas por JS y h1 solo con JS. Medido en Docker: 57 páginas en ~105 s con pico de ~375 MiB en el worker.
+- *Diseño (M8)*: las URLs salen de los sitemaps declarados en `robots.txt` (o `/sitemap.xml` si no hay), con índices y gzip; sin sitemap se audita la portada y se reporta. Topes por auditoría: 500 URLs, respuestas de 5 MB (sitemaps 10 MB: uno mayor se reporta como límite, no como error), 250 ms entre peticiones, user-agent propio `ags-io-audit`. **SSRF**: el cliente HTTP (`src/audit/http.ts`) solo conecta por http(s) a los puertos 80/443 y valida la IP en el `lookup` de cada socket (también tras redirecciones y contra DNS rebinding), rechazando direcciones privadas, locales y reservadas. Texto principal = `<main>` o, si no hay, el `<body>` sin navegación; umbral `AUDIT_MIN_TEXT_CHARS` (250 por defecto). Las reglas son un catálogo en `domain/audit/rules.ts` con severidad `error`/`warning`/`notice`; sus ids no se renombran (rompería el diff).
+- *Diseño (M8, render)*: Chromium headless shell vía `playwright-core`, una instancia por auditoría, una página a la vez y un contexto nuevo por página (heap de JS limitado a 256 MB), hasta 100 páginas por auditoría (portada primero). **Todo** el tráfico del navegador se intercepta (`context.route`) y se hace con el cliente HTTP del auditor, así que Chromium no abre conexiones propias y hereda la protección SSRF; WebSockets y service workers bloqueados, imágenes, fuentes y video no se descargan. Se compara texto principal, title, description, canonical, meta robots y h1: contenido que solo existe con JS (`js_dependent_content` si sin JS no llega al umbral, `js_added_content` si JS añade ≥ 300 caracteres y ≥ 30 %), cabeceras cambiadas por JS y h1 solo con JS. Memoria del worker (R-070): heap de Node acotado a 192 MB (`--max-old-space-size`); medido en Docker, un sitio SSR de 57 páginas llega a ~375 MiB y uno Shopify de 169 URLs (100 renderizadas, ~12 min) a ~800 MiB de su `mem_limit` de 1 GiB, volviendo a ~250 MiB al terminar. El log `auditoría terminada` incluye `process.memoryUsage()` para vigilarlo en la VPS.
 
 **R-031 Datos estructurados**
 - EL SISTEMA DEBE extraer todos los bloques JSON-LD, validarlos contra el vocabulario de schema.org y reportar errores.
 - EL SISTEMA DEBE comparar el nombre, dirección y teléfono del JSON-LD `LocalBusiness` contra los datos del sitio registrados en R-002 y reportar discrepancias.
+- *Diseño (M8)*: el vocabulario de schema.org se versiona compacto en `src/domain/audit/schemaorg.json` (tipos con supertipos, propiedades con `domainIncludes`, términos reemplazados) y se regenera con `pnpm schemaorg:update`. Se valida el JSON-LD del HTML sin JS (lo que ven los bots de IA): JSON inválido, `@context`, tipos y propiedades inexistentes, propiedades que no aplican al tipo (herencia incluida), términos reemplazados y propiedades que Google exige para resultados enriquecidos de los tipos más comunes (LocalBusiness, BreadcrumbList, Product, Offer, Review, AggregateRating, FAQPage, Event, Recipe, VideoObject, JobPosting). JSON-LD que solo aparece tras ejecutar JS se reporta aparte. La comparación de nombre, dirección y teléfono normaliza acentos, mayúsculas, puntuación y abreviaturas comunes (Av., Col., CDMX…), compara teléfonos por sus últimos 10 dígitos y acepta dirección en texto libre; se evalúa una vez por LocalBusiness distinto del sitio. Si el sitio tiene datos del negocio y ninguna página publica LocalBusiness, se reporta.
 
 **R-032 Rastreo y robots**
 - EL SISTEMA DEBE descargar el `robots.txt` **servido públicamente** y evaluar si cada bot de R-020 puede acceder a las rutas clave.
@@ -368,7 +369,8 @@ login_failures (id, ip, attempted_at)                              -- R-001 bloq
 worker_heartbeat (worker_id, version, started_at, beat_at)        -- R-074
 
 sites          (id, organization_id, domain, domain_key, gsc_property, bing_site, city, lat, lng,
-                locale, country, status active|paused, created_at, updated_at)
+                locale, country, business_name, street_address, postal_code, region, phone,
+                status active|paused, created_at, updated_at)
                 -- único (organization_id, domain_key); business_json se añade cuando un módulo lo use
 competitors    (id, site_id, name, aliases text[], domains text[])
 brand_aliases  (id, site_id, alias)
@@ -488,7 +490,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 ### M8 — Auditor (R-030–R-034)
 - [x] T8.1 Fetch sin JS (cliente HTTP con protección SSRF) + sitemaps + reglas on-page + job semanal en ventana + auditoría manual + vista por sitio.
 - [x] T8.2 Diff contra DOM de Playwright (tráfico del navegador por el cliente con protección SSRF).
-- [ ] T8.3 Extracción y validación de JSON-LD + chequeo de nombre, dirección y teléfono.
+- [x] T8.3 Extracción y validación de JSON-LD (vocabulario de schema.org versionado) + datos del negocio en el sitio y chequeo de nombre, dirección y teléfono.
 - [ ] T8.4 robots.txt público por bot + validación de sitemap + enlaces rotos.
 - [ ] T8.5 PageSpeed Insights API (lab + CrUX).
 - [ ] T8.6 Score de salud y diff entre auditorías.

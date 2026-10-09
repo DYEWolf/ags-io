@@ -21,6 +21,7 @@
     "staff:create": "tsx src/server/cli/create-staff.ts",
     "spend:demo": "tsx scripts/spend-demo.ts",
     "audit:run": "tsx scripts/audit-run.ts",
+    "schemaorg:update": "tsx scripts/schemaorg-vocab.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",

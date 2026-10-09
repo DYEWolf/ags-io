@@ -85,7 +85,9 @@ services:
     <<: *app
     build:
       context: .
-    command: ['node', 'dist/node/worker.mjs']
+    # Heap de Node acotado: sin tope, V8 retrasa la recolección (cuerpos que se pasan a Chromium)
+    # y, sumado a Chromium, el contenedor se acercaba a su mem_limit (R-070).
+    command: ['node', '--max-old-space-size=192', 'dist/node/worker.mjs']
     # Espera a que `web` esté sano: ahí ya se aplicaron las migraciones.
     depends_on:
       web:
