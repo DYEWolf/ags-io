@@ -1,4 +1,6 @@
 // Operación de colas para el panel de staff (R-071, T4.2): estado de colas y dead-letter.
+import { sql } from 'drizzle-orm'
+import { db } from '~/db/client'
 import { deadLetterName } from '~/queue'
 import { logger } from '~/lib/logger'
 import { producer } from '~/server/queue'
@@ -53,26 +55,36 @@ function errorMessage(output: unknown): string | null {
 export async function listQueues(): Promise<QueueRow[]> {
   const boss = await producer()
   const queues = (await boss.getQueues()).filter((queue) => !queue.name.startsWith('__'))
-  const names = new Set(queues.map((queue) => queue.name))
-  // Los contadores de getQueues los refresca el mantenimiento de pg-boss y van con retraso;
-  // el dead-letter se cuenta en vivo porque es lo que staff acaba de reintentar o descartar.
-  const rows = await Promise.all(
-    queues
-      .filter((queue) => !queue.name.endsWith(DEAD_SUFFIX))
-      .map(async (queue) => {
-        const dead = names.has(deadLetterName(queue.name))
-          ? (await boss.findJobs(deadLetterName(queue.name), { queued: true })).length
-          : 0
-        return {
-          name: queue.name,
-          queued: queue.queuedCount,
-          active: queue.activeCount,
-          failed: queue.failedCount,
-          dead,
-        }
-      }),
-  )
-  return rows.sort((a, b) => b.dead - a.dead || a.name.localeCompare(b.name))
+  // Los contadores de getQueues/getQueueStats los refresca el mantenimiento de pg-boss y van
+  // con retraso; staff necesita el estado real justo después de reintentar o descartar.
+  // Se cuenta en vivo sobre la tabla de jobs de pg-boss (esquema `pgboss`).
+  const counts = await db.execute<{
+    name: string
+    queued: number
+    active: number
+    failed: number
+  }>(sql`
+    select name,
+      count(*) filter (where state in ('created', 'retry'))::int as queued,
+      count(*) filter (where state = 'active')::int as active,
+      count(*) filter (where state = 'failed')::int as failed
+    from pgboss.job
+    group by name
+  `)
+  const byName = new Map(counts.rows.map((row) => [row.name, row]))
+  return queues
+    .filter((queue) => !queue.name.endsWith(DEAD_SUFFIX))
+    .map((queue) => {
+      const live = byName.get(queue.name)
+      return {
+        name: queue.name,
+        queued: live?.queued ?? 0,
+        active: live?.active ?? 0,
+        failed: live?.failed ?? 0,
+        dead: byName.get(deadLetterName(queue.name))?.queued ?? 0,
+      }
+    })
+    .sort((a, b) => b.dead - a.dead || a.name.localeCompare(b.name))
 }
 
 async function assertDeadQueue(name: string) {

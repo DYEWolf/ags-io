@@ -57,7 +57,7 @@ function JobsPage() {
             Actualizar
           </Button>
         </div>
-        <Table head={['Cola', 'En cola', 'Activos', 'Fallidos (aprox.)', 'Dead-letter']}>
+        <Table head={['Cola', 'En cola', 'Activos', 'Fallidos (retenidos)', 'Dead-letter']}>
           {queues.map((queue) => (
             <tr key={queue.name}>
               <td className="px-4 py-2 font-mono">{queue.name}</td>
