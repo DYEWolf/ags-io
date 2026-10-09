@@ -57,6 +57,9 @@ function AppLayout() {
             <Link to="/panel" className={navLinkClass} activeProps={{ className: navActiveClass }}>
               Panel
             </Link>
+            <Link to="/sitios" className={navLinkClass} activeProps={{ className: navActiveClass }}>
+              Sitios
+            </Link>
             <Link to="/cuenta" className={navLinkClass} activeProps={{ className: navActiveClass }}>
               Cuenta
             </Link>

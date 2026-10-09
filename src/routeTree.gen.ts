@@ -25,6 +25,9 @@ import { Route as AuthRestablecerRouteImport } from './routes/_auth/restablecer'
 import { Route as AuthVerificaTuCorreoRouteImport } from './routes/_auth/verifica-tu-correo'
 import { Route as AppCuentaIndexRouteImport } from './routes/_app/cuenta/index'
 import { Route as AppCuentaSeguridadRouteImport } from './routes/_app/cuenta/seguridad'
+import { Route as AppSitiosIndexRouteImport } from './routes/_app/sitios/index'
+import { Route as AppSitiosSiteIdRouteImport } from './routes/_app/sitios/$siteId'
+import { Route as AppSitiosNuevoRouteImport } from './routes/_app/sitios/nuevo'
 import { Route as AppStaffIndexRouteImport } from './routes/_app/staff/index'
 import { Route as AppStaffOrganizacionesRouteImport } from './routes/_app/staff/organizaciones'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -107,6 +110,21 @@ const AppCuentaSeguridadRoute = AppCuentaSeguridadRouteImport.update({
   path: '/seguridad',
   getParentRoute: () => AppCuentaRouteRoute,
 } as any)
+const AppSitiosIndexRoute = AppSitiosIndexRouteImport.update({
+  id: '/sitios/',
+  path: '/sitios/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSitiosSiteIdRoute = AppSitiosSiteIdRouteImport.update({
+  id: '/sitios/$siteId',
+  path: '/sitios/$siteId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSitiosNuevoRoute = AppSitiosNuevoRouteImport.update({
+  id: '/sitios/nuevo',
+  path: '/sitios/nuevo',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppStaffIndexRoute = AppStaffIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -137,9 +155,12 @@ export interface FileRoutesByFullPath {
   '/restablecer': typeof AuthRestablecerRoute
   '/verifica-tu-correo': typeof AuthVerificaTuCorreoRoute
   '/cuenta/seguridad': typeof AppCuentaSeguridadRoute
+  '/sitios/$siteId': typeof AppSitiosSiteIdRoute
+  '/sitios/nuevo': typeof AppSitiosNuevoRoute
   '/staff/organizaciones': typeof AppStaffOrganizacionesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/cuenta/': typeof AppCuentaIndexRoute
+  '/sitios/': typeof AppSitiosIndexRoute
   '/staff/': typeof AppStaffIndexRoute
 }
 export interface FileRoutesByTo {
@@ -154,9 +175,12 @@ export interface FileRoutesByTo {
   '/restablecer': typeof AuthRestablecerRoute
   '/verifica-tu-correo': typeof AuthVerificaTuCorreoRoute
   '/cuenta/seguridad': typeof AppCuentaSeguridadRoute
+  '/sitios/$siteId': typeof AppSitiosSiteIdRoute
+  '/sitios/nuevo': typeof AppSitiosNuevoRoute
   '/staff/organizaciones': typeof AppStaffOrganizacionesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/cuenta': typeof AppCuentaIndexRoute
+  '/sitios': typeof AppSitiosIndexRoute
   '/staff': typeof AppStaffIndexRoute
 }
 export interface FileRoutesById {
@@ -176,9 +200,12 @@ export interface FileRoutesById {
   '/_auth/restablecer': typeof AuthRestablecerRoute
   '/_auth/verifica-tu-correo': typeof AuthVerificaTuCorreoRoute
   '/_app/cuenta/seguridad': typeof AppCuentaSeguridadRoute
+  '/_app/sitios/$siteId': typeof AppSitiosSiteIdRoute
+  '/_app/sitios/nuevo': typeof AppSitiosNuevoRoute
   '/_app/staff/organizaciones': typeof AppStaffOrganizacionesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_app/cuenta/': typeof AppCuentaIndexRoute
+  '/_app/sitios/': typeof AppSitiosIndexRoute
   '/_app/staff/': typeof AppStaffIndexRoute
 }
 export interface FileRouteTypes {
@@ -197,9 +224,12 @@ export interface FileRouteTypes {
     | '/restablecer'
     | '/verifica-tu-correo'
     | '/cuenta/seguridad'
+    | '/sitios/$siteId'
+    | '/sitios/nuevo'
     | '/staff/organizaciones'
     | '/api/auth/$'
     | '/cuenta/'
+    | '/sitios/'
     | '/staff/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -214,9 +244,12 @@ export interface FileRouteTypes {
     | '/restablecer'
     | '/verifica-tu-correo'
     | '/cuenta/seguridad'
+    | '/sitios/$siteId'
+    | '/sitios/nuevo'
     | '/staff/organizaciones'
     | '/api/auth/$'
     | '/cuenta'
+    | '/sitios'
     | '/staff'
   id:
     | '__root__'
@@ -235,9 +268,12 @@ export interface FileRouteTypes {
     | '/_auth/restablecer'
     | '/_auth/verifica-tu-correo'
     | '/_app/cuenta/seguridad'
+    | '/_app/sitios/$siteId'
+    | '/_app/sitios/nuevo'
     | '/_app/staff/organizaciones'
     | '/api/auth/$'
     | '/_app/cuenta/'
+    | '/_app/sitios/'
     | '/_app/staff/'
   fileRoutesById: FileRoutesById
 }
@@ -363,6 +399,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCuentaSeguridadRouteImport
       parentRoute: typeof AppCuentaRouteRoute
     }
+    '/_app/sitios/': {
+      id: '/_app/sitios/'
+      path: '/sitios'
+      fullPath: '/sitios/'
+      preLoaderRoute: typeof AppSitiosIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sitios/$siteId': {
+      id: '/_app/sitios/$siteId'
+      path: '/sitios/$siteId'
+      fullPath: '/sitios/$siteId'
+      preLoaderRoute: typeof AppSitiosSiteIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/sitios/nuevo': {
+      id: '/_app/sitios/nuevo'
+      path: '/sitios/nuevo'
+      fullPath: '/sitios/nuevo'
+      preLoaderRoute: typeof AppSitiosNuevoRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/staff/': {
       id: '/_app/staff/'
       path: '/'
@@ -419,12 +476,18 @@ interface AppRouteChildren {
   AppCuentaRouteRoute: typeof AppCuentaRouteRouteWithChildren
   AppStaffRouteRoute: typeof AppStaffRouteRouteWithChildren
   AppPanelRoute: typeof AppPanelRoute
+  AppSitiosSiteIdRoute: typeof AppSitiosSiteIdRoute
+  AppSitiosNuevoRoute: typeof AppSitiosNuevoRoute
+  AppSitiosIndexRoute: typeof AppSitiosIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppCuentaRouteRoute: AppCuentaRouteRouteWithChildren,
   AppStaffRouteRoute: AppStaffRouteRouteWithChildren,
   AppPanelRoute: AppPanelRoute,
+  AppSitiosSiteIdRoute: AppSitiosSiteIdRoute,
+  AppSitiosNuevoRoute: AppSitiosNuevoRoute,
+  AppSitiosIndexRoute: AppSitiosIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

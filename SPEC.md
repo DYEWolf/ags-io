@@ -116,6 +116,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 - EL SISTEMA DEBE permitir CRUD de sitios dentro de una organización (una organización puede tener N sitios). La organización reemplaza a la entidad "cliente" de v0.1.
 - Cada sitio DEBE tener: dominio canónico, propiedad GSC, sitio Bing, ubicación principal (lat/lng, ciudad), idioma/país, estado (activo/pausado).
 - CUANDO un sitio está pausado, EL SISTEMA NO DEBE ejecutar jobs que consuman créditos para ese sitio.
+- *Diseño (M3)*: el dominio se normaliza en `domain/sites.ts` (minúsculas, sin esquema/ruta/puerto, punycode; se rechazan IPs y nombres sin TLD) y es **único por organización**, contando `www.` como el mismo sitio (`domain_key`). No es único global: así nadie puede ocupar un dominio ajeno ni averiguar qué dominios son clientes; la propiedad real se comprueba con GSC (M6). La propiedad GSC (`sc-domain:` o prefijo de URL) y el sitio de Bing deben pertenecer al dominio; ambos son opcionales hasta M6. Todo job de pago obtiene el sitio con `siteForPaidWork()` (src/server/sites.ts), que devuelve `null` si está pausado; la regla pura es `siteAllowsPaidWork()`.
 
 **R-003 Control de gasto**
 - EL SISTEMA DEBE registrar cada llamada a un proveedor de pago (proveedor, costo estimado, organización, sitio, job).
@@ -361,8 +362,9 @@ invitation     (id, organization_id, email, role, status, inviter_id, expires_at
 login_failures (id, ip, attempted_at)                              -- R-001 bloqueo por IP
 worker_heartbeat (worker_id, version, started_at, beat_at)        -- R-074
 
-sites          (id, organization_id, domain, gsc_property, bing_site, city, lat, lng,
-                locale, country, business_json jsonb, status, created_at)
+sites          (id, organization_id, domain, domain_key, gsc_property, bing_site, city, lat, lng,
+                locale, country, status active|paused, created_at, updated_at)
+                -- único (organization_id, domain_key); business_json se añade cuando un módulo lo use
 competitors    (id, site_id, name, aliases text[], domains text[])
 brand_aliases  (id, site_id, alias)
 
@@ -443,8 +445,8 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [x] T2.6 Panel de staff: CLI para crear el primer staff, 2FA obligatorio, usuarios/organizaciones, suspender, impersonar.
 
 ### M3 — Sitios (R-002)
-- [ ] T3.1 Esquema y CRUD de sitios por organización, validación Zod, dominio normalizado y único.
-- [ ] T3.2 Estado activo/pausado + regla de dominio "pausado no gasta créditos".
+- [x] T3.1 Esquema y CRUD de sitios por organización, validación Zod, dominio normalizado y único.
+- [x] T3.2 Estado activo/pausado + regla de dominio "pausado no gasta créditos".
 
 ### M4 — Gasto y operación (R-003, R-071)
 - [ ] T4.1 `spend_ledger` + topes global, por proveedor y por organización.
