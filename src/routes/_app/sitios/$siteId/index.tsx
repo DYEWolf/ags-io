@@ -96,7 +96,7 @@ function SummaryCard() {
   return (
     <Card
       title="Salud técnica"
-      description="Cada lunes de madrugada revisamos las páginas de tu sitemap tal como las ve un buscador o un bot de IA: sin ejecutar JavaScript."
+      description="Cada lunes de madrugada revisamos las páginas de tu sitemap tal como las ve un bot de IA (sin ejecutar JavaScript) y las comparamos con lo que muestra un navegador."
     >
       <div className="flex flex-col gap-4">
         {pending ? (
@@ -149,6 +149,7 @@ function LatestRun({ run }: { run: AuditRunView }) {
       <p className="text-sm text-neutral-600">
         Última auditoría: {formatDate(run.finishedAt ?? run.createdAt)} · {run.pagesChecked ?? 0}{' '}
         página(s) revisada(s)
+        {run.pagesRendered ? `, ${String(run.pagesRendered)} comparada(s) con JavaScript` : ''}
       </p>
       <dl className="grid grid-cols-3 gap-3 sm:max-w-md">
         <Stat label="Errores" value={counts.error} tone="text-red-700" />
@@ -258,7 +259,7 @@ function PagesSection() {
           Páginas revisadas ({pages.length})
         </summary>
         <div className="mt-3">
-          <Table head={['URL', 'Estado', 'Título', 'Texto', 'Hallazgos']}>
+          <Table head={['URL', 'Estado', 'Título', 'Texto sin JS', 'Con JS', 'Hallazgos']}>
             {pages.map((page) => (
               <tr key={page.url}>
                 <td className="max-w-xs px-4 py-2 break-all">{page.url}</td>
@@ -273,6 +274,7 @@ function PagesSection() {
                 </td>
                 <td className="max-w-xs px-4 py-2">{page.title ?? '—'}</td>
                 <td className="px-4 py-2 tabular-nums">{page.textLength ?? '—'}</td>
+                <td className="px-4 py-2 tabular-nums">{page.renderedTextLength ?? '—'}</td>
                 <td className="px-4 py-2 tabular-nums">{page.findings}</td>
               </tr>
             ))}

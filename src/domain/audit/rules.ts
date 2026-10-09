@@ -162,6 +162,44 @@ export const RULES = {
     title: 'Poco texto en el HTML inicial',
     fix: 'El contenido principal debe estar en el HTML que entrega el servidor, sin depender de JavaScript.',
   },
+
+  // --- Renderizado con JavaScript (R-030) ---
+  js_dependent_content: {
+    severity: 'error',
+    category: 'render',
+    title: 'El contenido principal solo aparece con JavaScript',
+    fix: 'Sirve el contenido en el HTML inicial (SSR o generación estática): la mayoría de los bots de IA no ejecutan JavaScript.',
+  },
+  js_added_content: {
+    severity: 'warning',
+    category: 'render',
+    title: 'Parte del contenido solo aparece con JavaScript',
+    fix: 'Incluye ese texto en el HTML inicial para que lo lean buscadores y bots de IA.',
+  },
+  js_changed_head: {
+    severity: 'warning',
+    category: 'render',
+    title: 'JavaScript cambia el título, la descripción, la canonical o los robots',
+    fix: 'Pon los valores definitivos en el HTML inicial: los bots que no ejecutan JS ven otros.',
+  },
+  js_only_h1: {
+    severity: 'warning',
+    category: 'render',
+    title: 'El <h1> solo aparece con JavaScript',
+    fix: 'Incluye el <h1> en el HTML inicial.',
+  },
+  render_failed: {
+    severity: 'notice',
+    category: 'render',
+    title: 'No se pudo renderizar la página con JavaScript',
+    fix: 'La página tardó demasiado o falló al cargar en el navegador; revisa errores de JavaScript.',
+  },
+  render_limit: {
+    severity: 'notice',
+    category: 'render',
+    title: 'Se alcanzó el límite de páginas renderizadas',
+    fix: 'Solo se compararon con JavaScript las primeras páginas del sitio.',
+  },
 } as const satisfies Record<string, RuleInfo>
 
 export type RuleId = keyof typeof RULES

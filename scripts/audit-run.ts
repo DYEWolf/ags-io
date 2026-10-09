@@ -10,6 +10,7 @@ import { eq, or } from 'drizzle-orm'
 import { PgBoss } from 'pg-boss'
 import { runAudit } from '~/audit/run'
 import { db, pool } from '~/db/client'
+import { isUniqueViolation } from '~/db/errors'
 import { pgConnectionOptions } from '~/db/connection'
 import { audits, sites } from '~/db/schema'
 import { logger } from '~/lib/logger'
@@ -38,7 +39,13 @@ try {
   if (!site) throw new Error('inalcanzable')
 
   const auditId = randomUUID()
-  await db.insert(audits).values({ id: auditId, siteId: site.id, trigger: 'manual' })
+  try {
+    await db.insert(audits).values({ id: auditId, siteId: site.id, trigger: 'manual' })
+  } catch (error) {
+    if (isUniqueViolation(error))
+      throw new Error(`${site.domain} ya tiene una auditoría en cola o en curso`, { cause: error })
+    throw error
+  }
 
   if (values.inline) {
     await db

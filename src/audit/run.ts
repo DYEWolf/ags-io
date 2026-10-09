@@ -4,10 +4,12 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import { eq } from 'drizzle-orm'
 import { extractPage, isHtml, loadHtml } from '~/audit/extract'
 import { auditFetch, describeFetchError, type FetchResult } from '~/audit/http'
+import { describeRenderError, MAX_RENDERED, Renderer } from '~/audit/render'
 import { discoverSitemaps, type SitemapDiscovery } from '~/audit/sitemap'
 import { db } from '~/db/client'
 import { auditFindings, auditPages, audits, sites, type AuditSummary, type Site } from '~/db/schema'
 import { evaluateDuplicates, evaluatePage, type PageFacts } from '~/domain/audit/onpage'
+import { compareRender, type PageVersion } from '~/domain/audit/render'
 import { RULES, SEVERITIES, severityOf, type Finding, type Severity } from '~/domain/audit/rules'
 import { isSiteUrl, siteRoot } from '~/domain/audit/urls'
 import { env } from '~/lib/env'
@@ -55,7 +57,8 @@ function sitemapFindings(discovery: SitemapDiscovery, foreign: string[]): Findin
 
 interface PageOutcome {
   row: typeof auditPages.$inferInsert
-  facts: PageFacts | null
+  /** Versión sin JavaScript, si la URL es una página HTML auditable. */
+  version: PageVersion | null
   findings: Finding[]
 }
 
@@ -73,20 +76,21 @@ function checkPage(auditId: string, url: string, result: FetchResult): PageOutco
   // 4xx/5xx, o 2xx distinto de 200 / 3xx sin Location: no hay página que auditar.
   if (result.status !== 200) {
     findings.push({ rule: 'http_error', url, detail: { status: result.status } })
-    return { row, facts: null, findings }
+    return { row, version: null, findings }
   }
   if (!isHtml(result.contentType)) {
     findings.push({ rule: 'not_html', url, detail: { contentType: result.contentType } })
-    return { row, facts: null, findings }
+    return { row, version: null, findings }
   }
   if (result.truncated)
     findings.push({ rule: 'page_too_large', url, detail: { bytes: result.body.length } })
 
-  const facts = extractPage(
+  const version = extractPage(
     loadHtml(result.body, result.contentType),
     result.finalUrl,
     result.headers['x-robots-tag'] ?? '',
   )
+  const { facts } = version
   // Los hallazgos se atribuyen a la URL pedida (la del sitemap), no a la final.
   findings.push(
     ...evaluatePage(facts, env.AUDIT_MIN_TEXT_CHARS).map((finding) => ({ ...finding, url })),
@@ -100,12 +104,51 @@ function checkPage(auditId: string, url: string, result: FetchResult): PageOutco
     textLength: facts.textLength,
     redirects: result.redirects,
   }
-  return { row, facts: { ...facts, url }, findings }
+  return { row, version, findings }
+}
+
+/**
+ * Renderiza con JavaScript y compara con la versión sin JS. Un fallo de la página (timeout,
+ * error de carga) es un hallazgo; un fallo del navegador se propaga.
+ */
+async function renderPage(
+  renderer: Renderer,
+  url: string,
+  raw: PageVersion,
+): Promise<{ findings: Finding[]; rendered: Record<string, unknown> | null }> {
+  let result
+  try {
+    result = await renderer.render(raw.facts.url)
+  } catch (error) {
+    if (!renderer.usable) throw error
+    return {
+      findings: [{ rule: 'render_failed', url, detail: { error: describeRenderError(error) } }],
+      rendered: null,
+    }
+  }
+  // El DOM serializado ya no lleva X-Robots-Tag: se conserva el de la respuesta sin JS.
+  const headerRobots = raw.facts.robots.filter((value) => !raw.facts.metaRobots.includes(value))
+  const rendered = extractPage(
+    loadHtml(Buffer.from(result.html), 'text/html; charset=utf-8'),
+    result.finalUrl,
+    '',
+  )
+  rendered.facts.robots.push(...headerRobots)
+  return {
+    findings: compareRender(url, raw, rendered, env.AUDIT_MIN_TEXT_CHARS),
+    rendered: {
+      status: result.status,
+      textLength: rendered.facts.textLength,
+      title: rendered.facts.titles[0] ?? null,
+      h1Count: rendered.facts.h1s.length,
+    },
+  }
 }
 
 function summarize(
   discovery: SitemapDiscovery,
   pagesChecked: number,
+  pagesRendered: number,
   findings: Finding[],
 ): AuditSummary {
   const counts = Object.fromEntries(SEVERITIES.map((severity) => [severity, 0])) as Record<
@@ -120,6 +163,7 @@ function summarize(
   return {
     pagesDiscovered: discovery.entries.length,
     pagesChecked,
+    pagesRendered,
     sitemaps: discovery.sitemaps,
     sitemapSource: discovery.source,
     capped: discovery.capped,
@@ -142,6 +186,12 @@ async function insertFindings(auditId: string, findings: Finding[]) {
   }
 }
 
+/** La portada (ruta `/`) primero; el resto en el orden del sitemap. */
+function homeFirst(urls: string[]): string[] {
+  const isHome = (url: string) => new URL(url).pathname === '/'
+  return [...urls.filter(isHome), ...urls.filter((url) => !isHome(url))]
+}
+
 /** Audita el sitio y deja la auditoría en `done`. Lanza si algo impide terminarla. */
 export async function runAudit(auditId: string, site: Site, { log, signal }: RunContext) {
   // Reintento: se descarta lo del intento anterior.
@@ -156,8 +206,9 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
   const own = discovery.entries
     .filter((entry) => isSiteUrl(entry.url, site.domain))
     .map((entry) => entry.url)
-  // Sin sitemap utilizable se audita al menos la portada.
-  const urls = own.length > 0 ? own : [root]
+  // Sin sitemap utilizable se audita al menos la portada. La portada va primero: es la que
+  // más importa renderizar si se alcanza el límite.
+  const urls = own.length > 0 ? homeFirst(own) : [root]
   log.info(
     { siteId: site.id, sitemaps: discovery.sitemaps.length, urls: urls.length },
     'auditoría: URLs descubiertas',
@@ -166,32 +217,52 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
   const findings: Finding[] = sitemapFindings(discovery, foreign)
   const pages: PageFacts[] = []
   let checked = 0
+  let rendered = 0
+  let renderer: Renderer | null = null
 
-  for (const [index, url] of urls.entries()) {
-    signal.throwIfAborted()
-    if (index > 0) await sleep(REQUEST_DELAY_MS, undefined, { signal })
-    let outcome: PageOutcome
-    try {
-      outcome = checkPage(auditId, url, await auditFetch(url, { signal }))
-    } catch (error) {
-      if (signal.aborted) throw error
-      const message = describeFetchError(error)
-      outcome = {
-        row: { auditId, url, error: message },
-        facts: null,
-        findings: [{ rule: 'fetch_failed', url, detail: { error: message } }],
+  try {
+    for (const [index, url] of urls.entries()) {
+      signal.throwIfAborted()
+      if (index > 0) await sleep(REQUEST_DELAY_MS, undefined, { signal })
+      let outcome: PageOutcome
+      try {
+        outcome = checkPage(auditId, url, await auditFetch(url, { signal }))
+      } catch (error) {
+        if (signal.aborted) throw error
+        const message = describeFetchError(error)
+        outcome = {
+          row: { auditId, url, error: message },
+          version: null,
+          findings: [{ rule: 'fetch_failed', url, detail: { error: message } }],
+        }
       }
+
+      if (outcome.version) {
+        pages.push({ ...outcome.version.facts, url })
+        if (rendered < MAX_RENDERED) {
+          renderer ??= await Renderer.launch(signal)
+          const result = await renderPage(renderer, url, outcome.version)
+          outcome.findings.push(...result.findings)
+          if (outcome.row.facts) outcome.row.facts['rendered'] = result.rendered
+          rendered += 1
+        } else if (rendered === MAX_RENDERED) {
+          findings.push({ rule: 'render_limit', url: null, detail: { limit: MAX_RENDERED } })
+          rendered += 1
+        }
+      }
+
+      await db.insert(auditPages).values(outcome.row).onConflictDoNothing()
+      findings.push(...outcome.findings)
+      checked += 1
     }
-    await db.insert(auditPages).values(outcome.row).onConflictDoNothing()
-    findings.push(...outcome.findings)
-    if (outcome.facts) pages.push(outcome.facts)
-    checked += 1
+  } finally {
+    await renderer?.close()
   }
 
   findings.push(...evaluateDuplicates(pages))
   await insertFindings(auditId, findings)
 
-  const summary = summarize(discovery, checked, findings)
+  const summary = summarize(discovery, checked, Math.min(rendered, MAX_RENDERED), findings)
   await db
     .update(audits)
     .set({ status: 'done', finishedAt: new Date(), summary, error: null })

@@ -70,6 +70,30 @@ export function describeFinding(rule: RuleId, detail: Detail): string | null {
       return list(d['directives']).join(' · ')
     case 'thin_content':
       return `${num(d['characters'])} caracteres (mínimo ${num(d['minimum'])}).`
+    case 'js_dependent_content':
+    case 'js_added_content': {
+      const snippets = list(d['snippets']).map((text) => quote(text, 80))
+      return `${num(d['rawChars'])} caracteres sin JS → ${num(d['renderedChars'])} con JS${
+        snippets.length > 0 ? `. Solo con JS: ${snippets.join(' · ')}` : ''
+      }`
+    }
+    case 'js_changed_head': {
+      const changes = Array.isArray(d['changes']) ? (d['changes'] as unknown[]) : []
+      return changes
+        .map((change) => {
+          const c = (change ?? {}) as Record<string, unknown>
+          const before = str(c['raw']) || '(vacío)'
+          const after = str(c['rendered']) || '(vacío)'
+          return `${str(c['field'])}: ${quote(before, 60)} → ${quote(after, 60)}`
+        })
+        .join(' · ')
+    }
+    case 'js_only_h1':
+      return quote(str(d['h1']))
+    case 'render_failed':
+      return str(d['error']) || null
+    case 'render_limit':
+      return `Límite: ${num(d['limit'])} páginas.`
     case 'title_missing':
     case 'description_missing':
     case 'h1_missing':

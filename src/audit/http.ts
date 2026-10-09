@@ -4,7 +4,7 @@
 // - solo http(s) en los puertos 80/443, con timeouts y tamaño máximo de respuesta.
 import { lookup as dnsLookup, type LookupAddress } from 'node:dns'
 import { BlockList, isIP, type LookupFunction } from 'node:net'
-import { gunzipSync } from 'node:zlib'
+import { brotliDecompressSync, gunzipSync, inflateSync } from 'node:zlib'
 import { Agent, errors, request } from 'undici'
 import { env } from '~/lib/env'
 import { APP_VERSION } from '~/lib/version'
@@ -151,8 +151,26 @@ export interface FetchOptions {
   signal?: AbortSignal
 }
 
-function headerValue(value: string | string[] | undefined): string {
-  return Array.isArray(value) ? value.join(', ') : (value ?? '')
+export interface RawRequest {
+  method?: string
+  headers?: Record<string, string>
+  body?: Buffer | null
+  maxBytes?: number
+  signal: AbortSignal
+}
+
+export interface RawResponse {
+  status: number
+  /** `set-cookie` se une con saltos de línea; el resto de valores repetidos, con comas. */
+  headers: Record<string, string>
+  /** Ya descomprimido. */
+  body: Buffer
+  truncated: boolean
+}
+
+function headerValue(key: string, value: string | string[] | undefined): string {
+  if (!Array.isArray(value)) return value ?? ''
+  return value.join(key === 'set-cookie' ? '\n' : ', ')
 }
 
 async function readBody(body: AsyncIterable<Buffer>, maxBytes: number) {
@@ -170,59 +188,80 @@ async function readBody(body: AsyncIterable<Buffer>, maxBytes: number) {
   return { body: Buffer.concat(chunks), truncated: false }
 }
 
+/** Pedimos `identity`, pero hay servidores que comprimen igual. */
+function decompress(body: Buffer, encoding: string, maxBytes: number): Buffer {
+  const options = { maxOutputLength: maxBytes }
+  if (/\bgzip\b/i.test(encoding)) return gunzipSync(body, options)
+  if (/\bbr\b/i.test(encoding)) return brotliDecompressSync(body, options)
+  if (/\bdeflate\b/i.test(encoding)) return inflateSync(body, options)
+  return body
+}
+
+/**
+ * Una petición sin seguir redirecciones, con la misma protección SSRF. La usa también el
+ * navegador de la auditoría (src/audit/render.ts) para todo su tráfico.
+ */
+export async function rawRequest(input: URL, options: RawRequest): Promise<RawResponse> {
+  assertFetchable(input)
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES
+  const response = await request(input, {
+    method: (options.method ?? 'GET') as 'GET',
+    dispatcher: agent,
+    signal: options.signal,
+    headers: { ...options.headers, 'accept-encoding': 'identity' },
+    body: options.body ?? null,
+  })
+  const headers: Record<string, string> = {}
+  for (const [key, value] of Object.entries(response.headers)) {
+    headers[key] = headerValue(key, value)
+  }
+  const read = await readBody(response.body, maxBytes)
+  if (read.truncated) {
+    response.body.destroy()
+    return { status: response.statusCode, headers, body: read.body, truncated: true }
+  }
+  const encoding = headers['content-encoding'] ?? ''
+  const body = decompress(read.body, encoding, maxBytes)
+  if (encoding) delete headers['content-encoding']
+  return { status: response.statusCode, headers, body, truncated: false }
+}
+
 /** GET con redirecciones manuales (validadas en cada salto). Lanza en errores de red. */
 export async function auditFetch(input: string, options: FetchOptions = {}): Promise<FetchResult> {
   const started = Date.now()
-  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES
   const timeout = AbortSignal.timeout(options.timeoutMs ?? 30_000)
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout
   const redirects: FetchResult['redirects'] = []
   let current = new URL(input)
 
   for (;;) {
-    assertFetchable(current)
-    const response = await request(current, {
-      method: 'GET',
-      dispatcher: agent,
+    const response = await rawRequest(current, {
       signal,
+      ...(options.maxBytes ? { maxBytes: options.maxBytes } : {}),
       headers: {
         'user-agent': AUDIT_USER_AGENT,
         accept: options.accept ?? 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.5',
-        'accept-encoding': 'identity',
         'accept-language': 'es-MX,es;q=0.9,en;q=0.5',
       },
     })
-    const headers: Record<string, string> = {}
-    for (const [key, value] of Object.entries(response.headers)) headers[key] = headerValue(value)
-
-    const location = headers['location']
-    if (response.statusCode >= 300 && response.statusCode < 400 && location) {
-      await response.body.dump()
+    const location = response.headers['location']
+    if (response.status >= 300 && response.status < 400 && location) {
       if (redirects.length >= MAX_REDIRECTS) {
         throw new Error(`demasiadas redirecciones desde ${input}`)
       }
-      redirects.push({ url: current.href, status: response.statusCode })
+      redirects.push({ url: current.href, status: response.status })
       current = new URL(location, current)
       continue
-    }
-
-    const read = await readBody(response.body, maxBytes)
-    const { truncated } = read
-    let { body } = read
-    if (truncated) response.body.destroy()
-    // Pedimos `identity`, pero algunos servidores comprimen igual (o sirven .xml.gz).
-    if (!truncated && /gzip/i.test(headers['content-encoding'] ?? '')) {
-      body = gunzipSync(body, { maxOutputLength: maxBytes })
     }
     return {
       url: input,
       finalUrl: current.href,
       redirects,
-      status: response.statusCode,
-      headers,
-      contentType: (headers['content-type'] ?? '').toLowerCase(),
-      body,
-      truncated,
+      status: response.status,
+      headers: response.headers,
+      contentType: (response.headers['content-type'] ?? '').toLowerCase(),
+      body: response.body,
+      truncated: response.truncated,
       ms: Date.now() - started,
     }
   }

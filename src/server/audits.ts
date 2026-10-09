@@ -38,6 +38,7 @@ export interface AuditRunView {
   error: string | null
   counts: Record<Severity, number> | null
   pagesChecked: number | null
+  pagesRendered: number | null
 }
 
 function runView(audit: Audit): AuditRunView {
@@ -52,6 +53,7 @@ function runView(audit: Audit): AuditRunView {
     error: audit.error,
     counts: audit.summary?.counts ?? null,
     pagesChecked: audit.summary?.pagesChecked ?? null,
+    pagesRendered: audit.summary?.pagesRendered ?? null,
   }
 }
 
@@ -73,6 +75,8 @@ export interface AuditPageView {
   error: string | null
   title: string | null
   textLength: number | null
+  /** Caracteres de texto principal tras ejecutar JavaScript (null = no se renderizó). */
+  renderedTextLength: number | null
   findings: number
 }
 
@@ -155,6 +159,11 @@ export async function getSiteAudit(
       .orderBy(asc(auditPages.id))
     for (const page of pageRows) {
       const facts = page.facts ?? {}
+      const rendered = facts['rendered']
+      const renderedText =
+        rendered && typeof rendered === 'object' && 'textLength' in rendered
+          ? rendered.textLength
+          : null
       pages.push({
         url: page.url,
         finalUrl: page.finalUrl,
@@ -162,6 +171,7 @@ export async function getSiteAudit(
         error: page.error,
         title: typeof facts['title'] === 'string' ? facts['title'] : null,
         textLength: typeof facts['textLength'] === 'number' ? facts['textLength'] : null,
+        renderedTextLength: typeof renderedText === 'number' ? renderedText : null,
         findings: perUrl.get(page.url) ?? 0,
       })
     }

@@ -28,9 +28,14 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 # --- runtime ---
 FROM node:${NODE_VERSION}-bookworm-slim AS runtime
 ARG APP_VERSION=dev
-ENV NODE_ENV=production TZ=UTC APP_VERSION=${APP_VERSION} NODE_OPTIONS=--enable-source-maps
+ENV NODE_ENV=production TZ=UTC APP_VERSION=${APP_VERSION} NODE_OPTIONS=--enable-source-maps \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 WORKDIR /app
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
+# Chromium headless shell + sus librerías del sistema para el auditor (R-030). Va antes del
+# código de la app para que esta capa solo se rehaga cuando cambian las dependencias.
+RUN node node_modules/playwright-core/cli.js install --with-deps --only-shell chromium \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node src/db/migrations ./src/db/migrations
 COPY --chown=node:node package.json ./

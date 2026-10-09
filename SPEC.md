@@ -164,6 +164,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 - Por cada URL del sitemap, EL SISTEMA DEBE obtener el HTML con una petición HTTP simple (sin JS) y verificar: `<title>`, meta description, `<h1>` único, canonical, meta robots, presencia de texto principal (umbral configurable de caracteres).
 - EL SISTEMA DEBE comparar contra el DOM renderizado con Playwright y reportar contenido que **solo** existe tras ejecutar JS.
 - *Diseño (M8)*: las URLs salen de los sitemaps declarados en `robots.txt` (o `/sitemap.xml` si no hay), con índices y gzip; sin sitemap se audita la portada y se reporta. Topes por auditoría: 500 URLs, respuestas de 5 MB (sitemaps 50 MB), 250 ms entre peticiones, user-agent propio `ags-io-audit`. **SSRF**: el cliente HTTP (`src/audit/http.ts`) solo conecta por http(s) a los puertos 80/443 y valida la IP en el `lookup` de cada socket (también tras redirecciones y contra DNS rebinding), rechazando direcciones privadas, locales y reservadas. Texto principal = `<main>` o, si no hay, el `<body>` sin navegación; umbral `AUDIT_MIN_TEXT_CHARS` (250 por defecto). Las reglas son un catálogo en `domain/audit/rules.ts` con severidad `error`/`warning`/`notice`; sus ids no se renombran (rompería el diff).
+- *Diseño (M8, render)*: Chromium headless shell vía `playwright-core`, una instancia por auditoría y una página a la vez, hasta 100 páginas por auditoría (portada primero). **Todo** el tráfico del navegador se intercepta (`context.route`) y se hace con el cliente HTTP del auditor, así que Chromium no abre conexiones propias y hereda la protección SSRF; WebSockets y service workers bloqueados, imágenes, fuentes y video no se descargan. Se compara texto principal, title, description, canonical, meta robots y h1: contenido que solo existe con JS (`js_dependent_content` si sin JS no llega al umbral, `js_added_content` si JS añade ≥ 300 caracteres y ≥ 30 %), cabeceras cambiadas por JS y h1 solo con JS. Medido en Docker: 57 páginas en ~105 s con pico de ~375 MiB en el worker.
 
 **R-031 Datos estructurados**
 - EL SISTEMA DEBE extraer todos los bloques JSON-LD, validarlos contra el vocabulario de schema.org y reportar errores.
@@ -486,7 +487,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 
 ### M8 — Auditor (R-030–R-034)
 - [x] T8.1 Fetch sin JS (cliente HTTP con protección SSRF) + sitemaps + reglas on-page + job semanal en ventana + auditoría manual + vista por sitio.
-- [ ] T8.2 Diff contra DOM de Playwright.
+- [x] T8.2 Diff contra DOM de Playwright (tráfico del navegador por el cliente con protección SSRF).
 - [ ] T8.3 Extracción y validación de JSON-LD + chequeo de nombre, dirección y teléfono.
 - [ ] T8.4 robots.txt público por bot + validación de sitemap + enlaces rotos.
 - [ ] T8.5 PageSpeed Insights API (lab + CrUX).

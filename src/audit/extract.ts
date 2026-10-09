@@ -1,12 +1,16 @@
 // Extracción de hechos del HTML inicial (sin JavaScript) para las reglas de domain/audit.
 import { loadBuffer, type CheerioAPI } from 'cheerio'
-import type { PageFacts } from '~/domain/audit/onpage'
+import type { PageVersion } from '~/domain/audit/render'
 
 /** Etiquetas que no son contenido visible ni texto principal. */
 const NON_CONTENT = 'script, style, noscript, template, svg, iframe, object, canvas'
 /** Bloques de navegación que no cuentan como texto principal cuando no hay <main>. */
 const CHROME =
   'nav, header, footer, aside, [role="navigation"], [role="banner"], [role="contentinfo"]'
+
+/** Elementos de bloque: se separan con un espacio para que sus textos no queden pegados. */
+const BLOCKS =
+  'address, article, aside, blockquote, br, button, dd, div, dl, dt, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hr, label, li, main, nav, ol, option, p, pre, section, table, td, th, tr, ul'
 
 const collapse = (text: string) => text.replace(/\s+/g, ' ').trim()
 
@@ -31,13 +35,15 @@ export function loadHtml(body: Buffer, contentType: string): CheerioAPI {
 export function mainText($: CheerioAPI): string {
   const root = $('body').clone()
   root.find(NON_CONTENT).remove()
+  root.find(BLOCKS).after(' ')
   const main = root.find('main, [role="main"]').first()
   if (main.length) return collapse(main.text())
   root.find(CHROME).remove()
   return collapse(root.text())
 }
 
-export function extractPage($: CheerioAPI, url: string, xRobotsTag: string): PageFacts {
+/** Hechos y texto principal de una versión (sin JS o renderizada) de la página. */
+export function extractPage($: CheerioAPI, url: string, xRobotsTag: string): PageVersion {
   const head = (selector: string) =>
     $(selector)
       .toArray()
@@ -47,7 +53,9 @@ export function extractPage($: CheerioAPI, url: string, xRobotsTag: string): Pag
       .filter((element) => names.includes((element.attr('name') ?? '').toLowerCase()))
       .map((element) => collapse(element.attr('content') ?? ''))
 
-  return {
+  const text = mainText($)
+  const metaRobots = meta(['robots', 'googlebot'])
+  const facts = {
     url,
     // Solo los <title> del documento, no los de <svg>.
     titles: head('title')
@@ -60,9 +68,11 @@ export function extractPage($: CheerioAPI, url: string, xRobotsTag: string): Pag
         (element.attr('rel') ?? '').toLowerCase().split(/\s+/).includes('canonical'),
       )
       .map((element) => element.attr('href') ?? ''),
-    robots: [...meta(['robots', 'googlebot']), ...(xRobotsTag ? [xRobotsTag] : [])],
-    textLength: mainText($).length,
+    robots: [...metaRobots, ...(xRobotsTag ? [xRobotsTag] : [])],
+    metaRobots,
+    textLength: text.length,
   }
+  return { facts, text }
 }
 
 export function isHtml(contentType: string): boolean {

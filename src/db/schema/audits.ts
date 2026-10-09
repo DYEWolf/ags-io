@@ -24,6 +24,8 @@ export type AuditStatus = 'queued' | 'running' | 'done' | 'failed'
 export interface AuditSummary {
   pagesDiscovered: number
   pagesChecked: number
+  /** Páginas comparadas con su versión renderizada (T8.2; ausente en auditorías anteriores). */
+  pagesRendered?: number
   sitemaps: string[]
   sitemapSource: 'robots' | 'default' | 'none'
   capped: boolean

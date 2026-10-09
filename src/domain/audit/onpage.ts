@@ -13,6 +13,8 @@ export interface PageFacts {
   canonicals: string[]
   /** Directivas de `<meta name="robots|googlebot">` y del encabezado `X-Robots-Tag`. */
   robots: string[]
+  /** Solo las de las metas (las que JavaScript puede cambiar). */
+  metaRobots: string[]
   /** Caracteres del texto principal (sin scripts, estilos ni navegación). */
   textLength: number
 }
