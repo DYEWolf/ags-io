@@ -29,6 +29,13 @@
       "when": 1791514429832,
       "tag": "0003_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791576200013,
+      "tag": "0004_audits",
+      "breakpoints": true
     }
   ]
 }

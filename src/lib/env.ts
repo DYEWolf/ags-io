@@ -39,6 +39,9 @@ const schema = z
     EMAIL_FROM: z.string().min(3).default('ags-io <no-reply@localhost>'),
     MAILPIT_URL: z.url().default('http://127.0.0.1:8025'),
     RESEND_API_KEY: z.string().optional(),
+
+    // Auditoría (R-030): caracteres mínimos de texto principal en el HTML sin JavaScript.
+    AUDIT_MIN_TEXT_CHARS: z.coerce.number().int().min(0).max(100_000).default(250),
   })
   .superRefine((value, ctx) => {
     if (value.EMAIL_PROVIDER === 'resend' && !value.RESEND_API_KEY) {

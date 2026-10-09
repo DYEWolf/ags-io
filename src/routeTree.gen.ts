@@ -26,13 +26,15 @@ import { Route as AuthVerificaTuCorreoRouteImport } from './routes/_auth/verific
 import { Route as AppCuentaIndexRouteImport } from './routes/_app/cuenta/index'
 import { Route as AppCuentaSeguridadRouteImport } from './routes/_app/cuenta/seguridad'
 import { Route as AppSitiosIndexRouteImport } from './routes/_app/sitios/index'
-import { Route as AppSitiosSiteIdRouteImport } from './routes/_app/sitios/$siteId'
+import { Route as AppSitiosSiteIdRouteRouteImport } from './routes/_app/sitios/$siteId/route'
 import { Route as AppSitiosNuevoRouteImport } from './routes/_app/sitios/nuevo'
 import { Route as AppStaffIndexRouteImport } from './routes/_app/staff/index'
 import { Route as AppStaffGastoRouteImport } from './routes/_app/staff/gasto'
 import { Route as AppStaffJobsRouteImport } from './routes/_app/staff/jobs'
 import { Route as AppStaffOrganizacionesRouteImport } from './routes/_app/staff/organizaciones'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AppSitiosSiteIdIndexRouteImport } from './routes/_app/sitios/$siteId/index'
+import { Route as AppSitiosSiteIdAjustesRouteImport } from './routes/_app/sitios/$siteId/ajustes'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -117,7 +119,7 @@ const AppSitiosIndexRoute = AppSitiosIndexRouteImport.update({
   path: '/sitios/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSitiosSiteIdRoute = AppSitiosSiteIdRouteImport.update({
+const AppSitiosSiteIdRouteRoute = AppSitiosSiteIdRouteRouteImport.update({
   id: '/sitios/$siteId',
   path: '/sitios/$siteId',
   getParentRoute: () => AppRoute,
@@ -152,6 +154,16 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSitiosSiteIdIndexRoute = AppSitiosSiteIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppSitiosSiteIdRouteRoute,
+} as any)
+const AppSitiosSiteIdAjustesRoute = AppSitiosSiteIdAjustesRouteImport.update({
+  id: '/ajustes',
+  path: '/ajustes',
+  getParentRoute: () => AppSitiosSiteIdRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -166,8 +178,8 @@ export interface FileRoutesByFullPath {
   '/registro': typeof AuthRegistroRoute
   '/restablecer': typeof AuthRestablecerRoute
   '/verifica-tu-correo': typeof AuthVerificaTuCorreoRoute
+  '/sitios/$siteId': typeof AppSitiosSiteIdRouteRouteWithChildren
   '/cuenta/seguridad': typeof AppCuentaSeguridadRoute
-  '/sitios/$siteId': typeof AppSitiosSiteIdRoute
   '/sitios/nuevo': typeof AppSitiosNuevoRoute
   '/staff/gasto': typeof AppStaffGastoRoute
   '/staff/jobs': typeof AppStaffJobsRoute
@@ -176,6 +188,8 @@ export interface FileRoutesByFullPath {
   '/cuenta/': typeof AppCuentaIndexRoute
   '/sitios/': typeof AppSitiosIndexRoute
   '/staff/': typeof AppStaffIndexRoute
+  '/sitios/$siteId/ajustes': typeof AppSitiosSiteIdAjustesRoute
+  '/sitios/$siteId/': typeof AppSitiosSiteIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -189,7 +203,6 @@ export interface FileRoutesByTo {
   '/restablecer': typeof AuthRestablecerRoute
   '/verifica-tu-correo': typeof AuthVerificaTuCorreoRoute
   '/cuenta/seguridad': typeof AppCuentaSeguridadRoute
-  '/sitios/$siteId': typeof AppSitiosSiteIdRoute
   '/sitios/nuevo': typeof AppSitiosNuevoRoute
   '/staff/gasto': typeof AppStaffGastoRoute
   '/staff/jobs': typeof AppStaffJobsRoute
@@ -198,6 +211,8 @@ export interface FileRoutesByTo {
   '/cuenta': typeof AppCuentaIndexRoute
   '/sitios': typeof AppSitiosIndexRoute
   '/staff': typeof AppStaffIndexRoute
+  '/sitios/$siteId/ajustes': typeof AppSitiosSiteIdAjustesRoute
+  '/sitios/$siteId': typeof AppSitiosSiteIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -215,8 +230,8 @@ export interface FileRoutesById {
   '/_auth/registro': typeof AuthRegistroRoute
   '/_auth/restablecer': typeof AuthRestablecerRoute
   '/_auth/verifica-tu-correo': typeof AuthVerificaTuCorreoRoute
+  '/_app/sitios/$siteId': typeof AppSitiosSiteIdRouteRouteWithChildren
   '/_app/cuenta/seguridad': typeof AppCuentaSeguridadRoute
-  '/_app/sitios/$siteId': typeof AppSitiosSiteIdRoute
   '/_app/sitios/nuevo': typeof AppSitiosNuevoRoute
   '/_app/staff/gasto': typeof AppStaffGastoRoute
   '/_app/staff/jobs': typeof AppStaffJobsRoute
@@ -225,6 +240,8 @@ export interface FileRoutesById {
   '/_app/cuenta/': typeof AppCuentaIndexRoute
   '/_app/sitios/': typeof AppSitiosIndexRoute
   '/_app/staff/': typeof AppStaffIndexRoute
+  '/_app/sitios/$siteId/ajustes': typeof AppSitiosSiteIdAjustesRoute
+  '/_app/sitios/$siteId/': typeof AppSitiosSiteIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -241,8 +258,8 @@ export interface FileRouteTypes {
     | '/registro'
     | '/restablecer'
     | '/verifica-tu-correo'
-    | '/cuenta/seguridad'
     | '/sitios/$siteId'
+    | '/cuenta/seguridad'
     | '/sitios/nuevo'
     | '/staff/gasto'
     | '/staff/jobs'
@@ -251,6 +268,8 @@ export interface FileRouteTypes {
     | '/cuenta/'
     | '/sitios/'
     | '/staff/'
+    | '/sitios/$siteId/ajustes'
+    | '/sitios/$siteId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -264,7 +283,6 @@ export interface FileRouteTypes {
     | '/restablecer'
     | '/verifica-tu-correo'
     | '/cuenta/seguridad'
-    | '/sitios/$siteId'
     | '/sitios/nuevo'
     | '/staff/gasto'
     | '/staff/jobs'
@@ -273,6 +291,8 @@ export interface FileRouteTypes {
     | '/cuenta'
     | '/sitios'
     | '/staff'
+    | '/sitios/$siteId/ajustes'
+    | '/sitios/$siteId'
   id:
     | '__root__'
     | '/'
@@ -289,8 +309,8 @@ export interface FileRouteTypes {
     | '/_auth/registro'
     | '/_auth/restablecer'
     | '/_auth/verifica-tu-correo'
-    | '/_app/cuenta/seguridad'
     | '/_app/sitios/$siteId'
+    | '/_app/cuenta/seguridad'
     | '/_app/sitios/nuevo'
     | '/_app/staff/gasto'
     | '/_app/staff/jobs'
@@ -299,6 +319,8 @@ export interface FileRouteTypes {
     | '/_app/cuenta/'
     | '/_app/sitios/'
     | '/_app/staff/'
+    | '/_app/sitios/$siteId/ajustes'
+    | '/_app/sitios/$siteId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -434,7 +456,7 @@ declare module '@tanstack/react-router' {
       id: '/_app/sitios/$siteId'
       path: '/sitios/$siteId'
       fullPath: '/sitios/$siteId'
-      preLoaderRoute: typeof AppSitiosSiteIdRouteImport
+      preLoaderRoute: typeof AppSitiosSiteIdRouteRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/sitios/nuevo': {
@@ -479,6 +501,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/sitios/$siteId/': {
+      id: '/_app/sitios/$siteId/'
+      path: '/'
+      fullPath: '/sitios/$siteId/'
+      preLoaderRoute: typeof AppSitiosSiteIdIndexRouteImport
+      parentRoute: typeof AppSitiosSiteIdRouteRoute
+    }
+    '/_app/sitios/$siteId/ajustes': {
+      id: '/_app/sitios/$siteId/ajustes'
+      path: '/ajustes'
+      fullPath: '/sitios/$siteId/ajustes'
+      preLoaderRoute: typeof AppSitiosSiteIdAjustesRouteImport
+      parentRoute: typeof AppSitiosSiteIdRouteRoute
+    }
   }
 }
 
@@ -514,11 +550,24 @@ const AppStaffRouteRouteWithChildren = AppStaffRouteRoute._addFileChildren(
   AppStaffRouteRouteChildren,
 )
 
+interface AppSitiosSiteIdRouteRouteChildren {
+  AppSitiosSiteIdAjustesRoute: typeof AppSitiosSiteIdAjustesRoute
+  AppSitiosSiteIdIndexRoute: typeof AppSitiosSiteIdIndexRoute
+}
+
+const AppSitiosSiteIdRouteRouteChildren: AppSitiosSiteIdRouteRouteChildren = {
+  AppSitiosSiteIdAjustesRoute: AppSitiosSiteIdAjustesRoute,
+  AppSitiosSiteIdIndexRoute: AppSitiosSiteIdIndexRoute,
+}
+
+const AppSitiosSiteIdRouteRouteWithChildren =
+  AppSitiosSiteIdRouteRoute._addFileChildren(AppSitiosSiteIdRouteRouteChildren)
+
 interface AppRouteChildren {
   AppCuentaRouteRoute: typeof AppCuentaRouteRouteWithChildren
   AppStaffRouteRoute: typeof AppStaffRouteRouteWithChildren
   AppPanelRoute: typeof AppPanelRoute
-  AppSitiosSiteIdRoute: typeof AppSitiosSiteIdRoute
+  AppSitiosSiteIdRouteRoute: typeof AppSitiosSiteIdRouteRouteWithChildren
   AppSitiosNuevoRoute: typeof AppSitiosNuevoRoute
   AppSitiosIndexRoute: typeof AppSitiosIndexRoute
 }
@@ -527,7 +576,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCuentaRouteRoute: AppCuentaRouteRouteWithChildren,
   AppStaffRouteRoute: AppStaffRouteRouteWithChildren,
   AppPanelRoute: AppPanelRoute,
-  AppSitiosSiteIdRoute: AppSitiosSiteIdRoute,
+  AppSitiosSiteIdRouteRoute: AppSitiosSiteIdRouteRouteWithChildren,
   AppSitiosNuevoRoute: AppSitiosNuevoRoute,
   AppSitiosIndexRoute: AppSitiosIndexRoute,
 }

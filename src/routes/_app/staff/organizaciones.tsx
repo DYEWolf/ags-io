@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Pagination, SearchBox, Table } from '~/components/staff'
-import { dateTimeFormat } from '~/components/ui'
+import { Pagination, SearchBox } from '~/components/staff'
+import { dateTimeFormat, Table } from '~/components/ui'
 import { staffListOrganizations, staffListSchema } from '~/functions/staff'
 
 export const Route = createFileRoute('/_app/staff/organizaciones')({

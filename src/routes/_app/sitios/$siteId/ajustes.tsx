@@ -1,48 +1,23 @@
-import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
+import { createFileRoute, getRouteApi, useRouter } from '@tanstack/react-router'
 import { useState, type SubmitEvent } from 'react'
-import { SiteForm, StatusBadge } from '~/components/site-form'
+import { SiteForm } from '~/components/site-form'
 import { Alert, Button, Card, formText } from '~/components/ui'
-import { deleteSite, getSite, setSiteStatus, updateSite } from '~/functions/sites'
+import { deleteSite, setSiteStatus, updateSite } from '~/functions/sites'
 
-// Un sitio de otra organización (o inexistente) responde 404 desde getSite (R-005).
-export const Route = createFileRoute('/_app/sitios/$siteId')({
-  loader: ({ params }) => getSite({ data: { id: params.siteId } }),
-  head: ({ loaderData }) => ({
-    meta: [{ title: `${loaderData?.domain ?? 'Sitio'} · ags-io` }],
-  }),
-  notFoundComponent: SiteNotFound,
+const siteRoute = getRouteApi('/_app/sitios/$siteId')
+
+export const Route = createFileRoute('/_app/sitios/$siteId/ajustes')({
+  head: () => ({ meta: [{ title: 'Ajustes del sitio · ags-io' }] }),
   component: SitePage,
 })
 
-function SiteNotFound() {
-  return (
-    <div className="flex flex-col gap-3">
-      <h1 className="text-2xl font-semibold">Sitio no encontrado</h1>
-      <p className="text-sm text-neutral-600">No existe o no pertenece a tu organización.</p>
-      <Link to="/sitios" className="text-sm underline">
-        Volver a sitios
-      </Link>
-    </div>
-  )
-}
-
 function SitePage() {
   const router = useRouter()
-  const site = Route.useLoaderData()
+  const site = siteRoute.useLoaderData()
   const [saved, setSaved] = useState(false)
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link to="/sitios" className="text-sm text-neutral-600 underline">
-          ← Sitios
-        </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold">{site.domain}</h1>
-          <StatusBadge status={site.status} />
-        </div>
-      </div>
-
       <StatusCard />
 
       <Card title="Datos del sitio">
@@ -68,7 +43,7 @@ function SitePage() {
 
 function StatusCard() {
   const router = useRouter()
-  const site = Route.useLoaderData()
+  const site = siteRoute.useLoaderData()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const paused = site.status === 'paused'
@@ -91,7 +66,7 @@ function StatusCard() {
       title="Estado"
       description={
         paused
-          ? 'Pausado: no se ejecuta ninguna tarea que consuma créditos (rank tracking, consultas a IA…).'
+          ? 'Pausado: no se ejecutan auditorías ni tareas que consuman créditos (rank tracking, consultas a IA…).'
           : 'Activo: las tareas programadas del sitio se ejecutan con normalidad.'
       }
     >
@@ -109,7 +84,7 @@ function StatusCard() {
 
 function DeleteCard() {
   const router = useRouter()
-  const site = Route.useLoaderData()
+  const site = siteRoute.useLoaderData()
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
 

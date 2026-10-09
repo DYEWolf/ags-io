@@ -44,7 +44,7 @@ function toView(site: Site): SiteView {
 
 const MANAGER_ROLES = new Set(['owner', 'admin'])
 
-function assertCanManage(role: string) {
+export function assertCanManage(role: string) {
   // Hoy toda organización tiene un único owner; los roles cuentan cuando llegue "Equipo".
   if (!MANAGER_ROLES.has(role)) throw new Error('FORBIDDEN')
 }

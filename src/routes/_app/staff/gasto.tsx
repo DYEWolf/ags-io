@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
 import { useState, type SubmitEvent } from 'react'
-import { Badge, Table } from '~/components/staff'
-import { Alert, Button, Card, dateTimeFormat, formText } from '~/components/ui'
+import { Alert, Badge, Button, Card, dateTimeFormat, formText, Table } from '~/components/ui'
 import {
   staffSetSpendLimit,
   staffSpendSearchSchema,

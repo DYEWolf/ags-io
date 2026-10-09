@@ -3,6 +3,7 @@ import { PgBoss } from 'pg-boss'
 import { pgConnectionOptions } from '~/db/connection'
 import { logger } from '~/lib/logger'
 import { ensureQueue } from '~/queue'
+import { AUDIT_QUEUE } from '~/queue/audit'
 import { EMAIL_QUEUE, emailJobSchema, type EmailJobData } from '~/queue/email'
 
 const log = logger.child({ service: 'web', component: 'queue' })
@@ -24,6 +25,7 @@ async function start(): Promise<PgBoss> {
   await boss.start()
   // El web puede encolar antes de que el worker haya creado la cola (primer arranque).
   await ensureQueue(boss, EMAIL_QUEUE)
+  await ensureQueue(boss, AUDIT_QUEUE)
   return boss
 }
 

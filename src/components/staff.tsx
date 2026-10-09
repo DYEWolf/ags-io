@@ -1,6 +1,5 @@
 // Piezas compartidas por las listas del panel de staff.
 import { useNavigate } from '@tanstack/react-router'
-import type { ReactNode } from 'react'
 import { Button, formText } from '~/components/ui'
 
 export function SearchBox({ value, placeholder }: { value: string; placeholder: string }) {
@@ -72,39 +71,4 @@ export function Pagination({
       </div>
     </div>
   )
-}
-
-export function Table({ head, children }: { head: string[]; children: ReactNode }) {
-  return (
-    <div className="overflow-x-auto rounded-lg border border-neutral-200 bg-white">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-neutral-200 bg-neutral-50 text-xs text-neutral-500 uppercase">
-          <tr>
-            {head.map((label) => (
-              <th key={label} scope="col" className="px-4 py-2 font-medium">
-                {label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-neutral-200">{children}</tbody>
-      </table>
-    </div>
-  )
-}
-
-export function Badge({
-  tone,
-  children,
-}: {
-  tone: 'green' | 'red' | 'neutral' | 'amber'
-  children: ReactNode
-}) {
-  const tones = {
-    green: 'bg-green-100 text-green-800',
-    red: 'bg-red-100 text-red-800',
-    neutral: 'bg-neutral-100 text-neutral-700',
-    amber: 'bg-amber-100 text-amber-900',
-  }
-  return <span className={`rounded px-1.5 py-0.5 text-xs ${tones[tone]}`}>{children}</span>
 }

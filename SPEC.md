@@ -115,7 +115,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 **R-002 Gestión de sitios**
 - EL SISTEMA DEBE permitir CRUD de sitios dentro de una organización (una organización puede tener N sitios). La organización reemplaza a la entidad "cliente" de v0.1.
 - Cada sitio DEBE tener: dominio canónico, propiedad GSC, sitio Bing, ubicación principal (lat/lng, ciudad), idioma/país, estado (activo/pausado).
-- CUANDO un sitio está pausado, EL SISTEMA NO DEBE ejecutar jobs que consuman créditos para ese sitio.
+- CUANDO un sitio está pausado, EL SISTEMA NO DEBE ejecutar jobs que consuman créditos para ese sitio. Tampoco se audita (R-034).
 - *Diseño (M3)*: el dominio se normaliza en `domain/sites.ts` (minúsculas, sin esquema/ruta/puerto, punycode; se rechazan IPs y nombres sin TLD) y es **único por organización**, contando `www.` como el mismo sitio (`domain_key`). No es único global: así nadie puede ocupar un dominio ajeno ni averiguar qué dominios son clientes; la propiedad real se comprueba con GSC (M6). La propiedad GSC (`sc-domain:` o prefijo de URL) y el sitio de Bing deben pertenecer al dominio; ambos son opcionales hasta M6. Todo job de pago obtiene el sitio con `siteForPaidWork()` (src/server/sites.ts), que devuelve `null` si está pausado; la regla pura es `siteAllowsPaidWork()`.
 
 **R-003 Control de gasto**
@@ -163,6 +163,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 **R-030 HTML sin JavaScript**
 - Por cada URL del sitemap, EL SISTEMA DEBE obtener el HTML con una petición HTTP simple (sin JS) y verificar: `<title>`, meta description, `<h1>` único, canonical, meta robots, presencia de texto principal (umbral configurable de caracteres).
 - EL SISTEMA DEBE comparar contra el DOM renderizado con Playwright y reportar contenido que **solo** existe tras ejecutar JS.
+- *Diseño (M8)*: las URLs salen de los sitemaps declarados en `robots.txt` (o `/sitemap.xml` si no hay), con índices y gzip; sin sitemap se audita la portada y se reporta. Topes por auditoría: 500 URLs, respuestas de 5 MB (sitemaps 50 MB), 250 ms entre peticiones, user-agent propio `ags-io-audit`. **SSRF**: el cliente HTTP (`src/audit/http.ts`) solo conecta por http(s) a los puertos 80/443 y valida la IP en el `lookup` de cada socket (también tras redirecciones y contra DNS rebinding), rechazando direcciones privadas, locales y reservadas. Texto principal = `<main>` o, si no hay, el `<body>` sin navegación; umbral `AUDIT_MIN_TEXT_CHARS` (250 por defecto). Las reglas son un catálogo en `domain/audit/rules.ts` con severidad `error`/`warning`/`notice`; sus ids no se renombran (rompería el diff).
 
 **R-031 Datos estructurados**
 - EL SISTEMA DEBE extraer todos los bloques JSON-LD, validarlos contra el vocabulario de schema.org y reportar errores.
@@ -180,6 +181,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 **R-034 Programación y recursos**
 - Las auditorías DEBEN ejecutarse semanalmente en ventana nocturna (02:00–06:00 America/Mexico_City), con concurrencia de Playwright = 1.
 - CUANDO una auditoría termine, EL SISTEMA DEBE generar un puntaje de salud por sitio y un diff contra la auditoría anterior.
+- *Diseño (M8)*: `audit.schedule` corre los lunes a las 02:00 America/Mexico_City (`missed: once`) y crea una auditoría por sitio **activo** (los pausados no se auditan: Chromium consume RAM de la VPS compartida). `audit.run` procesa de una en una; una programada que no alcanza a empezar dentro de la ventana se difiere al siguiente inicio de ventana. El cliente puede pedir una **auditoría manual** por sitio cada 24 h, que corre al momento (fuera de la ventana, con la misma concurrencia 1). Un índice parcial impide dos auditorías pendientes del mismo sitio. Se conservan páginas y hallazgos de las últimas 12 auditorías por sitio; de las anteriores, score y resumen. Las que el worker no terminó se marcan fallidas (en curso > 6 h, en cola > 7 días). `pnpm audit:run <dominio|id> [--inline]` lanza una sin la espera de 24 h (desarrollo y soporte).
 
 ### 4.5 Rank tracking
 
@@ -381,8 +383,11 @@ bot_daily      (site_id, date, bot, verified, hits, errors_4xx, errors_5xx)
 log_cursors    (file, inode, offset, updated_at)
 ip_verifications (ip, bot, verified, method, checked_at)
 
-audits         (id, site_id, started_at, finished_at, score, summary jsonb)
-audit_findings (id, audit_id, url, rule, severity, detail jsonb)
+audits         (id, site_id, trigger scheduled|manual, status queued|running|done|failed,
+                requested_by, created_at, started_at, finished_at, score, summary jsonb, error)
+                -- único (site_id) donde status en queued|running
+audit_pages    (id, audit_id, url, final_url, status, content_type, bytes, ms, error, facts jsonb)
+audit_findings (id, audit_id, url, rule, severity error|warning|notice, detail jsonb)
 psi_results    (id, site_id, url, strategy, lab jsonb, field jsonb, fetched_at)
 
 keywords       (id, site_id, text, location, lat, lng, device, locale, group, priority)
@@ -458,6 +463,8 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [x] T4.1 `spend_ledger` + topes global, por proveedor y por organización.
 - [x] T4.2 Vista de staff: gasto del mes y jobs fallidos (dead-letter) con reintento manual.
 
+> **Orden**: M5 espera al dominio (Q6); mientras tanto se avanza con M8 y los módulos que no dependen de él.
+
 ### M5 — Deploy y respaldos (R-072, R-073) — requiere dominio (Q6)
 - [ ] T5.1 Dockerfile multi-stage endurecido, workflow CI (`pnpm check` + build) → GHCR → deploy por SSH.
 - [ ] T5.2 Resend con dominio verificado (SPF/DKIM/DMARC).
@@ -478,7 +485,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [ ] T7.4 Agregados diarios, retención y vista de bots de IA.
 
 ### M8 — Auditor (R-030–R-034)
-- [ ] T8.1 Fetch sin JS + reglas on-page.
+- [x] T8.1 Fetch sin JS (cliente HTTP con protección SSRF) + sitemaps + reglas on-page + job semanal en ventana + auditoría manual + vista por sitio.
 - [ ] T8.2 Diff contra DOM de Playwright.
 - [ ] T8.3 Extracción y validación de JSON-LD + chequeo de nombre, dirección y teléfono.
 - [ ] T8.4 robots.txt público por bot + validación de sitemap + enlaces rotos.

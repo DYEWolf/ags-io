@@ -3,6 +3,7 @@
 import { randomUUID } from 'node:crypto'
 import { and, asc, eq } from 'drizzle-orm'
 import { db } from '~/db/client'
+import { isUniqueViolation } from '~/db/errors'
 import { sites, type Site } from '~/db/schema'
 import { domainKey, siteAllowsPaidWork, type SiteData, type SiteStatus } from '~/domain/sites'
 import { logger } from '~/lib/logger'
@@ -14,12 +15,6 @@ export class DomainTakenError extends Error {
     super(`${domain} ya está registrado en esta organización`)
     this.name = 'DomainTakenError'
   }
-}
-
-/** 23505 = unique_violation. Drizzle envuelve el error de pg en `cause`. */
-function isUniqueViolation(error: unknown): boolean {
-  const cause = error instanceof Error && error.cause ? error.cause : error
-  return typeof cause === 'object' && cause !== null && 'code' in cause && cause.code === '23505'
 }
 
 const scoped = (organizationId: string, id: string) =>

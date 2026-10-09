@@ -1,7 +1,6 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
-import { Badge, Table } from '~/components/staff'
-import { Alert, Button, dateTimeFormat } from '~/components/ui'
+import { Alert, Badge, Button, dateTimeFormat, Table } from '~/components/ui'
 import {
   staffDiscardDeadJobs,
   staffJobsSearchSchema,
