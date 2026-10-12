@@ -1,5 +1,6 @@
 export * from './audits'
 export * from './auth'
+export * from './geo'
 export * from './operations'
 export * from './sites'
 export * from './system'

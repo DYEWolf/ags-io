@@ -57,6 +57,13 @@
       "when": 1791841201901,
       "tag": "0007_psi_results",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791843709142,
+      "tag": "0008_geo_config",
+      "breakpoints": true
     }
   ]
 }

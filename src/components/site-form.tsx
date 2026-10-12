@@ -3,7 +3,7 @@ import { useState, type SubmitEvent } from 'react'
 import { Alert, Button, Field, formText } from '~/components/ui'
 import type { SiteMutationResult, SiteView } from '~/functions/sites'
 
-const LOCALES = [
+export const LOCALES = [
   ['es-MX', 'Español (México)'],
   ['es-US', 'Español (Estados Unidos)'],
   ['es-ES', 'Español (España)'],
@@ -44,10 +44,10 @@ const COUNTRIES = [
 
 const regionNames = new Intl.DisplayNames(['es'], { type: 'region' })
 
-const selectClass =
+export const selectClass =
   'rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-neutral-900 focus:outline-none'
 
-function FieldError({ message }: { message: string | undefined }) {
+export function FieldError({ message }: { message: string | undefined }) {
   return message ? <p className="text-xs text-red-700">{message}</p> : null
 }
 

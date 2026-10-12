@@ -209,6 +209,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 **R-050 Prompts**
 - EL SISTEMA DEBE permitir definir prompts por sitio con: texto, intención (categoría / evaluación / decisión), si incluye la marca (sí/no), idioma y ubicación.
 - EL SISTEMA DEBE mantener una lista de competidores y alias de marca por sitio.
+- *Diseño (M10)*: la configuración vive en la pestaña **GEO** del sitio (Prompts · Marca y competidores) y es gratuita: funciona también con el sitio pausado. Prompt: texto (3–500 caracteres), intención, con marca sí/no, idioma (por defecto el del sitio) y ubicación en texto libre (por defecto la ciudad del sitio); único por sitio según `promptKey` (sin acentos, mayúsculas ni puntuación: «¿Cuál…?» = «cual…»). Un prompt se **archiva** (`active = false`): conserva su historial pero no se mide ni se ofrece al registrar corridas; borrarlo elimina sus corridas. A partir de T10.2 el texto solo se edita mientras no tenga corridas. Competidor: nombre, alias y dominios (guardados con `domainKey`; se aceptan URLs); el nombre siempre cuenta como alias. Alias de marca: una lista que se guarda completa; sin alias no se mide la mención y se sugieren el nombre del negocio y el dominio sin TLD (guiones como espacios). Los términos se comparan con `matchKey` (sin acentos ni mayúsculas, espacios colapsados) y un mismo término no puede ser de la marca y de un competidor, ni de dos competidores (la extracción no sabría a quién atribuirlo). Límites por sitio: 100 prompts, 30 competidores, 20 alias y 20 dominios por entidad (alias de 2 a 100 caracteres). Las escrituras bloquean la fila del sitio (`FOR UPDATE`) para que límites y conflictos no se salten con peticiones concurrentes; un prompt o competidor de otra organización responde "no encontrado".
 
 **R-051 Registro manual**
 - EL SISTEMA DEBE ofrecer un formulario para registrar una corrida manual: motor, modo, fecha, respuesta pegada y URLs citadas.
@@ -376,8 +377,9 @@ sites          (id, organization_id, domain, domain_key, gsc_property, bing_site
                 key_paths text[],
                 status active|paused, created_at, updated_at)
                 -- único (organization_id, domain_key); business_json se añade cuando un módulo lo use
-competitors    (id, site_id, name, aliases text[], domains text[])
-brand_aliases  (id, site_id, alias)
+competitors    (id, site_id, name, name_key, aliases text[], domains text[], created_at, updated_at)
+                -- único (site_id, name_key)
+brand_aliases  (id, site_id, alias, alias_key, created_at)  -- único (site_id, alias_key)
 
 gsc_daily      (site_id, date, query, page, country, device, clicks, impressions, ctr, position)
 gsc_ai_daily   (site_id, date, ... )                      -- si Q1 = sí
@@ -404,7 +406,8 @@ rank_results   (snapshot_id, organic_pos, url, local_pack, local_pos, ai_overvie
 grid_runs      (id, keyword_id, size, spacing_m, fetched_at, cost_usd)
 grid_points    (run_id, row, col, lat, lng, position)
 
-prompts        (id, site_id, text, intent, branded, locale, location, active)
+prompts        (id, site_id, text, text_key, intent category|evaluation|decision, branded, locale,
+                location, active, created_at, updated_at)       -- único (site_id, text_key)
 llm_runs       (id, prompt_id, engine, model, mode, source manual|auto, run_at,
                 raw jsonb, citations jsonb, cost_usd)
 mentions       (run_id, entity_type brand|competitor, entity_id, cited_own_domain, snippet)
@@ -506,7 +509,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [ ] T9.3 Resolver Q4 + geo-grid + heatmap.
 
 ### M10 — GEO manual (R-050, R-051, R-053, R-054)
-- [ ] T10.1 CRUD de prompts, competidores y alias.
+- [x] T10.1 CRUD de prompts, competidores y alias.
 - [ ] T10.2 Formulario de corrida manual.
 - [ ] T10.3 Extractor determinista de menciones y dominios citados.
 - [ ] T10.4 Métricas con tamaño de muestra.

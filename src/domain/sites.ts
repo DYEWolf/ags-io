@@ -68,7 +68,7 @@ export function normalizeSiteUrl(input: string, domain: string): string | null {
   return `${url.protocol}//${host}${path}`
 }
 
-function isLocale(value: string): boolean {
+export function isLocale(value: string): boolean {
   try {
     return Intl.getCanonicalLocales(value)[0] === value
   } catch {
