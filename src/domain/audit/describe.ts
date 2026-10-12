@@ -136,6 +136,30 @@ export function describeFinding(rule: RuleId, detail: Detail): string | null {
         })
         .join(' · ')
     }
+    case 'robots_unreachable':
+      return str(d['error']) || null
+    case 'robots_blocks_search':
+    case 'robots_blocks_ai_search':
+    case 'robots_blocks_ai_user':
+    case 'robots_blocks_ai_training':
+      return `${str(d['bot'])} (${str(d['owner'])}): ${list(d['paths']).join(', ')}`
+    case 'sitemap_blocked_url':
+      return 'Bloqueada para Googlebot.'
+    case 'sitemap_redirect':
+      return `${num(d['status'])} → ${str(d['finalUrl'])}`
+    case 'sitemap_lastmod':
+      return `${num(d['missing'])} sin lastmod y ${num(d['invalid'])} con formato inválido${
+        list(d['sample']).length > 0 ? `, p. ej. ${list(d['sample']).slice(0, 3).join(', ')}` : ''
+      }`
+    case 'broken_link':
+      return `${d['status'] ? `Respondió ${num(d['status'])}` : str(d['error'])}. Enlazado desde ${list(
+        d['from'],
+      )
+        .slice(0, 3)
+        .join(', ')}`
+    case 'link_limit':
+      return `Se revisaron ${num(d['limit'])} enlaces; ${num(d['unchecked'])} quedaron sin revisar.`
+    case 'robots_missing':
     case 'jsonld_missing':
     case 'localbusiness_missing':
       return null

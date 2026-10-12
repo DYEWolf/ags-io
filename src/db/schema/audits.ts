@@ -11,6 +11,7 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
+import type { RobotsOutcome } from '~/domain/audit/crawl'
 import type { Severity } from '~/domain/audit/rules'
 import { user } from './auth'
 import { sites } from './sites'
@@ -26,6 +27,10 @@ export interface AuditSummary {
   pagesChecked: number
   /** Páginas comparadas con su versión renderizada (T8.2; ausente en auditorías anteriores). */
   pagesRendered?: number
+  /** Enlaces internos pedidos para buscar rotos (T8.4). */
+  linksChecked?: number
+  /** Acceso de cada bot a las rutas clave según robots.txt (T8.4). */
+  robots?: RobotsOutcome
   sitemaps: string[]
   sitemapSource: 'robots' | 'default' | 'none'
   capped: boolean

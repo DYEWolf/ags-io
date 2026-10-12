@@ -5,6 +5,7 @@ import { and, asc, desc, eq, gt } from 'drizzle-orm'
 import { db } from '~/db/client'
 import { isUniqueViolation } from '~/db/errors'
 import { auditFindings, auditPages, audits, sites, type Audit } from '~/db/schema'
+import type { RobotsOutcome } from '~/domain/audit/crawl'
 import { describeFinding } from '~/domain/audit/describe'
 import { isRuleId, RULES, SEVERITIES, type RuleId, type Severity } from '~/domain/audit/rules'
 import { logger } from '~/lib/logger'
@@ -87,6 +88,9 @@ export interface SiteAuditView {
   latest: AuditRunView | null
   sitemaps: string[]
   sitemapSource: string | null
+  /** Acceso de cada bot a las rutas clave (null en auditorías anteriores a T8.4). */
+  robots: RobotsOutcome | null
+  keyPaths: string[]
   capped: boolean
   groups: FindingGroup[]
   pages: AuditPageView[]
@@ -181,6 +185,8 @@ export async function getSiteAudit(
     pending: pending ? runView(pending) : null,
     latest: latest ? runView(latest) : null,
     sitemaps: latest?.summary?.sitemaps ?? [],
+    robots: latest?.summary?.robots ?? null,
+    keyPaths: site.keyPaths,
     sitemapSource: latest?.summary?.sitemapSource ?? null,
     capped: latest?.summary?.capped ?? false,
     groups,

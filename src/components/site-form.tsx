@@ -79,6 +79,7 @@ export function SiteForm({
         'postalCode',
         'region',
         'phone',
+        'keyPaths',
         'city',
         'lat',
         'lng',
@@ -242,6 +243,25 @@ export function SiteForm({
           <FieldError message={errors['phone']} />
         </div>
       </fieldset>
+
+      <div className="flex flex-col gap-1">
+        <label className="flex flex-col gap-1 text-sm font-medium text-neutral-800">
+          Rutas clave
+          <textarea
+            name="keyPaths"
+            rows={4}
+            defaultValue={(site?.keyPaths ?? ['/']).join('\n')}
+            placeholder={'/\n/servicios\n/contacto'}
+            aria-describedby="key-paths-hint"
+            className="rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono text-sm focus:border-neutral-900 focus:outline-none"
+          />
+        </label>
+        <p id="key-paths-hint" className="text-xs text-neutral-500">
+          Una ruta por línea (máximo 10). Revisamos que buscadores y bots de IA puedan acceder a
+          ellas y medimos su velocidad.
+        </p>
+        <FieldError message={errors['keyPaths']} />
+      </div>
 
       <fieldset className="flex flex-col gap-4">
         <legend className="mb-2 text-sm font-semibold">

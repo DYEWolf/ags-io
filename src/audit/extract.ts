@@ -1,6 +1,7 @@
 // Extracción de hechos del HTML inicial (sin JavaScript) para las reglas de domain/audit.
 import { loadBuffer, type CheerioAPI } from 'cheerio'
 import type { PageVersion } from '~/domain/audit/render'
+import { normalizeUrl } from '~/domain/audit/urls'
 
 /** Etiquetas que no son contenido visible ni texto principal. */
 const NON_CONTENT = 'script, style, noscript, template, svg, iframe, object, canvas'
@@ -75,7 +76,16 @@ export function extractPage($: CheerioAPI, url: string, xRobotsTag: string): Pag
   const jsonLd = head('script[type]')
     .filter((element) => /^application\/ld\+json\b/i.test((element.attr('type') ?? '').trim()))
     .map((element) => element.text())
-  return { facts, text, jsonLd }
+  // Los enlaces relativos se resuelven contra <base href> si existe.
+  const base = normalizeUrl($('base[href]').first().attr('href') ?? '', url) ?? url
+  const links = [
+    ...new Set(
+      head('a[href]')
+        .map((element) => normalizeUrl(element.attr('href') ?? '', base))
+        .filter((link): link is string => link !== null),
+    ),
+  ]
+  return { facts, text, jsonLd, links }
 }
 
 export function isHtml(contentType: string): boolean {

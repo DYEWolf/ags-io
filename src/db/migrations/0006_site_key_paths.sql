@@ -1,0 +1,1 @@
+ALTER TABLE "sites" ADD COLUMN "key_paths" text[] DEFAULT '{"/"}' NOT NULL;

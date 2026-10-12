@@ -41,6 +41,7 @@ function AuditPage() {
       <SummaryCard />
       {view.latest?.status === 'done' ? (
         <>
+          {view.robots ? <RobotsSection robots={view.robots} keyPaths={view.keyPaths} /> : null}
           <FindingsSection groups={view.groups} />
           <PagesSection />
         </>
@@ -189,6 +190,58 @@ function SitemapNote({
       {sitemaps.length > 3 ? ` y ${String(sitemaps.length - 3)} más` : ''}
       {capped ? ' · se alcanzó el límite de páginas' : ''}
     </p>
+  )
+}
+
+const categoryLabel = {
+  search: 'Buscador',
+  'ai-search': 'Buscador de IA',
+  'ai-user': 'Asistente (a petición)',
+  'ai-training': 'Entrenamiento de IA',
+} as const
+
+function RobotsSection({
+  robots,
+  keyPaths,
+}: {
+  robots: NonNullable<AuditView['robots']>
+  keyPaths: string[]
+}) {
+  return (
+    <Card
+      title="Acceso de buscadores y bots de IA"
+      description={
+        robots.status === 'unreachable'
+          ? 'robots.txt no responde: los buscadores asumen que todo está bloqueado.'
+          : robots.status === 'missing'
+            ? 'No hay robots.txt: todos los bots pueden acceder.'
+            : `Según tu robots.txt, para las rutas clave: ${keyPaths.join(', ')}.`
+      }
+    >
+      <Table head={['Bot', 'Empresa', 'Tipo', 'Acceso']}>
+        {robots.bots.map((bot) => (
+          <tr key={bot.token}>
+            <td className="px-4 py-2 font-mono">{bot.token}</td>
+            <td className="px-4 py-2">{bot.owner}</td>
+            <td className="px-4 py-2">{categoryLabel[bot.category]}</td>
+            <td className="px-4 py-2">
+              {bot.blocked.length === 0 ? (
+                <Badge tone="green">Permitido</Badge>
+              ) : (
+                <span className="flex flex-wrap items-center gap-2">
+                  <Badge tone={bot.category === 'ai-training' ? 'neutral' : 'red'}>Bloqueado</Badge>
+                  {bot.blocked.length < keyPaths.length ? (
+                    <span className="font-mono text-xs text-neutral-600">
+                      {bot.blocked.join(', ')}
+                    </span>
+                  ) : null}
+                </span>
+              )}
+            </td>
+          </tr>
+        ))}
+      </Table>
+    </Card>
   )
 }
 

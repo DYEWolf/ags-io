@@ -16,6 +16,7 @@ export interface SiteView {
   postalCode: string | null
   region: string | null
   phone: string | null
+  keyPaths: string[]
   city: string
   lat: number
   lng: number
@@ -41,6 +42,7 @@ function toView(site: Site): SiteView {
     postalCode: site.postalCode,
     region: site.region,
     phone: site.phone,
+    keyPaths: site.keyPaths,
     city: site.city,
     lat: site.lat,
     lng: site.lng,

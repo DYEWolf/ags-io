@@ -11,10 +11,16 @@ import { auditFindings, auditPages, audits, sites, type AuditSummary, type Site 
 import { evaluateDuplicates, evaluatePage, type PageFacts } from '~/domain/audit/onpage'
 import { compareRender, type PageVersion } from '~/domain/audit/render'
 import { StructuredDataCollector } from '~/domain/audit/structured'
+import { evaluateRobots, evaluateSitemapEntries, type RobotsOutcome } from '~/domain/audit/crawl'
 import { RULES, SEVERITIES, severityOf, type Finding, type Severity } from '~/domain/audit/rules'
 import { isSiteUrl, siteRoot } from '~/domain/audit/urls'
 import { env } from '~/lib/env'
 import type { Logger } from '~/lib/logger'
+
+/** Enlaces internos fuera del sitemap que se comprueban como máximo por auditoría. */
+export const MAX_LINK_CHECKS = 300
+/** Páginas de origen que se guardan por enlace roto. */
+const LINK_SOURCES = 5
 
 /** URLs revisadas como máximo por auditoría. */
 export const MAX_PAGES = 500
@@ -161,8 +167,8 @@ async function renderPage(
 
 function summarize(
   discovery: SitemapDiscovery,
-  pagesChecked: number,
-  pagesRendered: number,
+  stats: { pagesChecked: number; pagesRendered: number; linksChecked: number },
+  robots: RobotsOutcome,
   findings: Finding[],
 ): AuditSummary {
   const counts = Object.fromEntries(SEVERITIES.map((severity) => [severity, 0])) as Record<
@@ -176,8 +182,8 @@ function summarize(
   }
   return {
     pagesDiscovered: discovery.entries.length,
-    pagesChecked,
-    pagesRendered,
+    ...stats,
+    robots,
     sitemaps: discovery.sitemaps,
     sitemapSource: discovery.source,
     capped: discovery.capped,
@@ -200,6 +206,60 @@ async function insertFindings(auditId: string, findings: Finding[]) {
   }
 }
 
+interface LinkState {
+  status: number | null
+  error: string | null
+}
+
+/**
+ * Enlaces internos rotos (R-032): los que apuntan a páginas ya descargadas usan ese resultado;
+ * el resto se pide (hasta `MAX_LINK_CHECKS`, leyendo solo el principio de la respuesta).
+ */
+async function checkLinks(
+  sources: Map<string, string[]>,
+  known: Map<string, LinkState>,
+  signal: AbortSignal,
+): Promise<{ findings: Finding[]; checked: number }> {
+  const findings: Finding[] = []
+  let checked = 0
+  let unchecked = 0
+  for (const [link, from] of sources) {
+    let state = known.get(link)
+    if (!state) {
+      if (checked >= MAX_LINK_CHECKS) {
+        unchecked += 1
+        continue
+      }
+      signal.throwIfAborted()
+      if (checked > 0) await sleep(REQUEST_DELAY_MS, undefined, { signal })
+      checked += 1
+      try {
+        const result = await auditFetch(link, { signal, maxBytes: 64 * 1024 })
+        state = { status: result.status, error: null }
+      } catch (error) {
+        if (signal.aborted) throw error
+        state = { status: null, error: describeFetchError(error) }
+      }
+      known.set(link, state)
+    }
+    if (state.error !== null || (state.status !== null && state.status >= 400)) {
+      findings.push({
+        rule: 'broken_link',
+        url: link,
+        detail: { status: state.status, error: state.error, from },
+      })
+    }
+  }
+  if (unchecked > 0) {
+    findings.push({
+      rule: 'link_limit',
+      url: null,
+      detail: { limit: MAX_LINK_CHECKS, unchecked },
+    })
+  }
+  return { findings, checked }
+}
+
 /** La portada (ruta `/`) primero; el resto en el orden del sitemap. */
 function homeFirst(urls: string[]): string[] {
   const isHome = (url: string) => new URL(url).pathname === '/'
@@ -217,9 +277,8 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
   const foreign = discovery.entries
     .filter((entry) => !isSiteUrl(entry.url, site.domain))
     .map((entry) => entry.url)
-  const own = discovery.entries
-    .filter((entry) => isSiteUrl(entry.url, site.domain))
-    .map((entry) => entry.url)
+  const ownEntries = discovery.entries.filter((entry) => isSiteUrl(entry.url, site.domain))
+  const own = ownEntries.map((entry) => entry.url)
   // Sin sitemap utilizable se audita al menos la portada. La portada va primero: es la que
   // más importa renderizar si se alcanza el límite.
   const urls = own.length > 0 ? homeFirst(own) : [root]
@@ -229,6 +288,22 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
   )
 
   const findings: Finding[] = sitemapFindings(discovery, foreign)
+  const robotsCheck = evaluateRobots(
+    {
+      url: discovery.robots?.finalUrl ?? new URL('/robots.txt', root).href,
+      status: discovery.robots?.status ?? null,
+      body: discovery.robots?.status === 200 ? discovery.robots.body.toString('utf8') : null,
+      error: discovery.robotsError,
+    },
+    site.keyPaths,
+  )
+  findings.push(...robotsCheck.findings)
+  findings.push(...evaluateSitemapEntries(ownEntries, robotsCheck.robots))
+  const fromSitemap = own.length > 0
+  /** Estado de cada URL ya descargada (pedida y final), para no volver a pedirla al revisar enlaces. */
+  const known = new Map<string, LinkState>()
+  /** Enlaces internos y las páginas que los contienen. */
+  const linkSources = new Map<string, string[]>()
   const pages: PageFacts[] = []
   let checked = 0
   let rendered = 0
@@ -241,10 +316,22 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
       if (index > 0) await sleep(REQUEST_DELAY_MS, undefined, { signal })
       let outcome: PageOutcome
       try {
-        outcome = checkPage(auditId, url, await auditFetch(url, { signal }))
+        const result = await auditFetch(url, { signal })
+        known.set(url, { status: result.status, error: null })
+        known.set(result.finalUrl, { status: result.status, error: null })
+        outcome = checkPage(auditId, url, result)
+        const firstRedirect = result.redirects[0]
+        if (fromSitemap && firstRedirect) {
+          outcome.findings.push({
+            rule: 'sitemap_redirect',
+            url,
+            detail: { status: firstRedirect.status, finalUrl: result.finalUrl },
+          })
+        }
       } catch (error) {
         if (signal.aborted) throw error
         const message = describeFetchError(error)
+        known.set(url, { status: null, error: message })
         outcome = {
           row: { auditId, url, error: message },
           version: null,
@@ -267,6 +354,12 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
           rendered += 1
         }
         outcome.findings.push(...structured.addPage(url, outcome.version, renderedVersion))
+        for (const link of outcome.version.links) {
+          if (!isSiteUrl(link, site.domain)) continue
+          const sources = linkSources.get(link)
+          if (!sources) linkSources.set(link, [url])
+          else if (sources.length < LINK_SOURCES && !sources.includes(url)) sources.push(url)
+        }
       }
 
       await db.insert(auditPages).values(outcome.row).onConflictDoNothing()
@@ -276,6 +369,9 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
   } finally {
     await renderer?.close()
   }
+
+  const links = await checkLinks(linkSources, known, signal)
+  findings.push(...links.findings)
 
   findings.push(...evaluateDuplicates(pages))
   findings.push(
@@ -290,7 +386,16 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
   )
   await insertFindings(auditId, findings)
 
-  const summary = summarize(discovery, checked, Math.min(rendered, MAX_RENDERED), findings)
+  const summary = summarize(
+    discovery,
+    {
+      pagesChecked: checked,
+      pagesRendered: Math.min(rendered, MAX_RENDERED),
+      linksChecked: links.checked,
+    },
+    robotsCheck.outcome,
+    findings,
+  )
   await db
     .update(audits)
     .set({ status: 'done', finishedAt: new Date(), summary, error: null })

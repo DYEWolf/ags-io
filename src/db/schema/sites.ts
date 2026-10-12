@@ -29,6 +29,8 @@ export const sites = pgTable(
     postalCode: text('postal_code'),
     region: text('region'),
     phone: text('phone'),
+    // Rutas clave (R-032, R-033): se evalúan en robots.txt para cada bot y en PageSpeed.
+    keyPaths: text('key_paths').array().notNull().default(['/']),
     status: text('status').$type<SiteStatus>().notNull().default('active'),
     createdAt: tstz('created_at').notNull().defaultNow(),
     updatedAt: tstz('updated_at')

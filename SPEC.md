@@ -114,7 +114,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 
 **R-002 Gestión de sitios**
 - EL SISTEMA DEBE permitir CRUD de sitios dentro de una organización (una organización puede tener N sitios). La organización reemplaza a la entidad "cliente" de v0.1.
-- Cada sitio DEBE tener: dominio canónico, propiedad GSC, sitio Bing, ubicación principal (lat/lng, ciudad), idioma/país, estado (activo/pausado). Opcionalmente, los datos del negocio (nombre, calle y número, estado, código postal, teléfono) que audita R-031.
+- Cada sitio DEBE tener: dominio canónico, propiedad GSC, sitio Bing, ubicación principal (lat/lng, ciudad), idioma/país, estado (activo/pausado) y rutas clave (R-032, R-033; por defecto `/`). Opcionalmente, los datos del negocio (nombre, calle y número, estado, código postal, teléfono) que audita R-031.
 - CUANDO un sitio está pausado, EL SISTEMA NO DEBE ejecutar jobs que consuman créditos para ese sitio. Tampoco se audita (R-034).
 - *Diseño (M3)*: el dominio se normaliza en `domain/sites.ts` (minúsculas, sin esquema/ruta/puerto, punycode; se rechazan IPs y nombres sin TLD) y es **único por organización**, contando `www.` como el mismo sitio (`domain_key`). No es único global: así nadie puede ocupar un dominio ajeno ni averiguar qué dominios son clientes; la propiedad real se comprueba con GSC (M6). La propiedad GSC (`sc-domain:` o prefijo de URL) y el sitio de Bing deben pertenecer al dominio; ambos son opcionales hasta M6. Todo job de pago obtiene el sitio con `siteForPaidWork()` (src/server/sites.ts), que devuelve `null` si está pausado; la regla pura es `siteAllowsPaidWork()`.
 
@@ -175,6 +175,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 - EL SISTEMA DEBE descargar el `robots.txt` **servido públicamente** y evaluar si cada bot de R-020 puede acceder a las rutas clave.
 - EL SISTEMA DEBE validar el sitemap: URLs 200, canónicas y `lastmod` presente.
 - EL SISTEMA DEBE detectar enlaces internos rotos.
+- *Diseño (M8)*: la lista de bots vive en `domain/bots.ts` (la reutiliza M7) con su categoría: buscador, buscador de IA, asistente a petición del usuario y entrenamiento de IA (incluye los tokens solo de robots.txt `Google-Extended` y `Applebot-Extended`). robots.txt se interpreta según RFC 9309 con `*` y `$` (regla más específica; `Allow` gana en empate; grupos propios del bot o, si no, `*`): un 4xx equivale a "sin restricciones" y un 5xx o la falta de respuesta a "todo bloqueado". Se evalúa cada bot contra las **rutas clave** del sitio (hasta 10, por defecto `/`) y la vista muestra la matriz bot × acceso; el bloqueo de buscadores es error, el de buscadores y asistentes de IA aviso y el de entrenamiento solo informativo (es una decisión legítima). Sitemap: URLs que redirigen, bloqueadas para Googlebot y `lastmod` ausente o fuera del formato W3C. Enlaces internos rotos: los que apuntan a páginas ya descargadas reutilizan ese resultado; del resto se piden hasta 300 por auditoría.
 
 **R-033 Rendimiento**
 - EL SISTEMA DEBE consultar la PageSpeed Insights API (móvil y escritorio) para las URLs clave y guardar: datos de laboratorio y datos de campo CrUX (LCP, INP, CLS al p75) cuando existan.
@@ -370,6 +371,7 @@ worker_heartbeat (worker_id, version, started_at, beat_at)        -- R-074
 
 sites          (id, organization_id, domain, domain_key, gsc_property, bing_site, city, lat, lng,
                 locale, country, business_name, street_address, postal_code, region, phone,
+                key_paths text[],
                 status active|paused, created_at, updated_at)
                 -- único (organization_id, domain_key); business_json se añade cuando un módulo lo use
 competitors    (id, site_id, name, aliases text[], domains text[])
@@ -491,7 +493,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [x] T8.1 Fetch sin JS (cliente HTTP con protección SSRF) + sitemaps + reglas on-page + job semanal en ventana + auditoría manual + vista por sitio.
 - [x] T8.2 Diff contra DOM de Playwright (tráfico del navegador por el cliente con protección SSRF).
 - [x] T8.3 Extracción y validación de JSON-LD (vocabulario de schema.org versionado) + datos del negocio en el sitio y chequeo de nombre, dirección y teléfono.
-- [ ] T8.4 robots.txt público por bot + validación de sitemap + enlaces rotos.
+- [x] T8.4 robots.txt público por bot (rutas clave del sitio) + validación de sitemap + enlaces rotos.
 - [ ] T8.5 PageSpeed Insights API (lab + CrUX).
 - [ ] T8.6 Score de salud y diff entre auditorías.
 

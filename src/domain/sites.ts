@@ -104,6 +104,42 @@ const optionalField = (
     .optional()
     .transform((value) => (value ? value.replace(/\s+/g, ' ') : null))
 
+export const MAX_KEY_PATHS = 10
+
+/**
+ * Rutas clave, una por línea (`/`, `/servicios`, `/contacto?x=1`). Se aceptan URLs completas del
+ * mismo dominio (se queda la ruta). Sin rutas, la portada.
+ */
+function parseKeyPaths(value: string, ctx: z.RefinementCtx): string[] {
+  const paths: string[] = []
+  for (const line of value.split(/\r?\n/)) {
+    const raw = line.trim()
+    if (!raw) continue
+    let path = raw
+    if (/^https?:\/\//i.test(raw)) {
+      try {
+        const url = new URL(raw)
+        path = `${url.pathname}${url.search}`
+      } catch {
+        path = ''
+      }
+    }
+    if (!path.startsWith('/') || /\s/.test(path) || path.length > 300) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `Ruta inválida: ${raw.slice(0, 60)} (empieza con /).`,
+      })
+      return []
+    }
+    if (!paths.includes(path)) paths.push(path)
+  }
+  if (paths.length > MAX_KEY_PATHS) {
+    ctx.addIssue({ code: 'custom', message: `Máximo ${String(MAX_KEY_PATHS)} rutas clave.` })
+    return []
+  }
+  return paths.length > 0 ? paths : ['/']
+}
+
 /** Teléfono: dígitos con +, espacios, guiones, puntos o paréntesis; entre 7 y 15 dígitos. */
 export function isPhone(value: string): boolean {
   const digits = value.replace(/\D/g, '')
@@ -136,6 +172,11 @@ export const siteInputSchema = z
     }),
     region: optionalField(100),
     phone: optionalField(30, { test: isPhone, message: 'Teléfono inválido (7 a 15 dígitos).' }),
+    keyPaths: z
+      .string()
+      .max(4_000)
+      .optional()
+      .transform((value, ctx) => parseKeyPaths(value ?? '', ctx)),
     city: z.string().trim().min(1, 'Escribe la ciudad.').max(120),
     lat: z.coerce
       .number({ message: 'Latitud inválida.' })

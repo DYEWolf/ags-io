@@ -9,6 +9,8 @@ export interface PageVersion {
   text: string
   /** Contenido de cada `<script type="application/ld+json">`. */
   jsonLd: string[]
+  /** Destinos http(s) absolutos de los `<a href>`, sin fragmento. */
+  links: string[]
 }
 
 /** Diferencia mínima para considerar que JS añade contenido relevante. */

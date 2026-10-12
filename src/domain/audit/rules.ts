@@ -268,6 +268,74 @@ export const RULES = {
     title: 'Nombre, dirección o teléfono distintos a los del negocio',
     fix: 'Haz que el JSON-LD coincida con los datos del negocio registrados en el sitio (y con Google Business Profile).',
   },
+
+  // --- Rastreo y robots (R-032) ---
+  robots_unreachable: {
+    severity: 'error',
+    category: 'robots',
+    title: 'robots.txt responde con error o no se pudo descargar',
+    fix: 'Con un 5xx o sin respuesta, los buscadores asumen que todo está bloqueado. Sirve robots.txt con 200 (o 404 si no lo usas).',
+  },
+  robots_missing: {
+    severity: 'notice',
+    category: 'robots',
+    title: 'No hay robots.txt',
+    fix: 'No es obligatorio, pero sirve para declarar el sitemap y la política por bot.',
+  },
+  robots_blocks_search: {
+    severity: 'error',
+    category: 'robots',
+    title: 'robots.txt bloquea a un buscador en una ruta clave',
+    fix: 'Quita la regla Disallow que afecta a Googlebot/Bingbot/Applebot en esa ruta.',
+  },
+  robots_blocks_ai_search: {
+    severity: 'warning',
+    category: 'robots',
+    title: 'robots.txt bloquea a un buscador de IA en una ruta clave',
+    fix: 'Sin acceso, ChatGPT, Claude o Perplexity no pueden citar el sitio en sus respuestas.',
+  },
+  robots_blocks_ai_user: {
+    severity: 'warning',
+    category: 'robots',
+    title: 'robots.txt bloquea a los asistentes cuando un usuario pide la página',
+    fix: 'ChatGPT-User, Claude-User y Perplexity-User visitan la página a petición de una persona.',
+  },
+  robots_blocks_ai_training: {
+    severity: 'notice',
+    category: 'robots',
+    title: 'robots.txt bloquea a bots de entrenamiento de IA',
+    fix: 'Es una decisión válida: no afecta a buscadores ni a las citas en asistentes.',
+  },
+  sitemap_blocked_url: {
+    severity: 'warning',
+    category: 'crawl',
+    title: 'URL del sitemap bloqueada por robots.txt',
+    fix: 'El sitemap solo debe listar URLs que Googlebot pueda rastrear.',
+  },
+  sitemap_redirect: {
+    severity: 'warning',
+    category: 'crawl',
+    title: 'URL del sitemap que redirige',
+    fix: 'Lista en el sitemap la URL final, no la que redirige.',
+  },
+  sitemap_lastmod: {
+    severity: 'notice',
+    category: 'crawl',
+    title: 'URLs del sitemap sin lastmod válido',
+    fix: 'Incluye <lastmod> con la fecha real de modificación en formato W3C (AAAA-MM-DD).',
+  },
+  broken_link: {
+    severity: 'error',
+    category: 'crawl',
+    title: 'Enlace interno roto',
+    fix: 'Corrige o quita el enlace: responde con error o no carga.',
+  },
+  link_limit: {
+    severity: 'notice',
+    category: 'crawl',
+    title: 'Se alcanzó el límite de enlaces revisados',
+    fix: 'Solo se comprobaron los primeros enlaces internos que no están en el sitemap.',
+  },
 } as const satisfies Record<string, RuleInfo>
 
 export type RuleId = keyof typeof RULES
