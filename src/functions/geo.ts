@@ -20,6 +20,8 @@ export interface PromptView {
   locale: string
   location: string | null
   active: boolean
+  /** Con corridas, el texto ya no se edita (cambiaría el significado del historial). */
+  runCount: number
   createdAt: string
 }
 
@@ -67,7 +69,7 @@ export const getGeoConfig = createServerFn({ method: 'GET' })
     const server = await import('~/server/geo')
     const config = orNotFound(await server.getGeoConfig(context.organizationId, data.siteId))
     return {
-      prompts: config.prompts.map((prompt) => ({
+      prompts: config.prompts.map(({ prompt, runCount }) => ({
         id: prompt.id,
         text: prompt.text,
         intent: prompt.intent,
@@ -75,6 +77,7 @@ export const getGeoConfig = createServerFn({ method: 'GET' })
         locale: prompt.locale,
         location: prompt.location,
         active: prompt.active,
+        runCount,
         createdAt: prompt.createdAt.toISOString(),
       })),
       competitors: config.competitors.map((competitor) => ({

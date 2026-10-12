@@ -1,4 +1,4 @@
-import { createFileRoute, getRouteApi, useRouter } from '@tanstack/react-router'
+import { createFileRoute, getRouteApi, Link, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import { ConfirmDelete, PromptForm } from '~/components/geo-forms'
 import { Alert, Badge, Button, Card } from '~/components/ui'
@@ -136,9 +136,29 @@ function PromptItem({ prompt }: { prompt: PromptView }) {
           {prompt.locale}
           {prompt.location ? ` · ${prompt.location}` : ''}
         </span>
+        {prompt.runCount > 0 ? (
+          <Link
+            to="/sitios/$siteId/geo/corridas"
+            params={{ siteId: site.id }}
+            search={{ prompt: prompt.id }}
+            className="text-xs text-neutral-600 underline"
+          >
+            {prompt.runCount} {prompt.runCount === 1 ? 'corrida' : 'corridas'}
+          </Link>
+        ) : null}
       </div>
       <Alert tone="error">{error}</Alert>
       <div className="-ml-4 flex flex-wrap items-center gap-1">
+        {prompt.active ? (
+          <Link
+            to="/sitios/$siteId/geo/corridas/nueva"
+            params={{ siteId: site.id }}
+            search={{ prompt: prompt.id }}
+            className="rounded-md px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-100"
+          >
+            Registrar corrida
+          </Link>
+        ) : null}
         <Button
           variant="ghost"
           onClick={() => {
@@ -152,7 +172,11 @@ function PromptItem({ prompt }: { prompt: PromptView }) {
         </Button>
         <ConfirmDelete
           label="Eliminar"
-          confirmLabel="¿Eliminar el prompt y su historial?"
+          confirmLabel={
+            prompt.runCount > 0
+              ? `¿Eliminar el prompt y sus ${String(prompt.runCount)} corridas?`
+              : '¿Eliminar el prompt?'
+          }
           onConfirm={async () => {
             await deletePrompt({ data: { id: prompt.id } })
             await router.invalidate()

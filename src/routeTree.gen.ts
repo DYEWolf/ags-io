@@ -39,6 +39,9 @@ import { Route as AppSitiosSiteIdGeoRouteRouteImport } from './routes/_app/sitio
 import { Route as AppSitiosSiteIdGeoIndexRouteImport } from './routes/_app/sitios/$siteId/geo/index'
 import { Route as AppSitiosSiteIdGeoMarcaRouteImport } from './routes/_app/sitios/$siteId/geo/marca'
 import { Route as AppSitiosSiteIdGeoPromptsRouteImport } from './routes/_app/sitios/$siteId/geo/prompts'
+import { Route as AppSitiosSiteIdGeoCorridasIndexRouteImport } from './routes/_app/sitios/$siteId/geo/corridas/index'
+import { Route as AppSitiosSiteIdGeoCorridasRunIdRouteImport } from './routes/_app/sitios/$siteId/geo/corridas/$runId'
+import { Route as AppSitiosSiteIdGeoCorridasNuevaRouteImport } from './routes/_app/sitios/$siteId/geo/corridas/nueva'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -189,6 +192,24 @@ const AppSitiosSiteIdGeoPromptsRoute =
     path: '/prompts',
     getParentRoute: () => AppSitiosSiteIdGeoRouteRoute,
   } as any)
+const AppSitiosSiteIdGeoCorridasIndexRoute =
+  AppSitiosSiteIdGeoCorridasIndexRouteImport.update({
+    id: '/corridas/',
+    path: '/corridas/',
+    getParentRoute: () => AppSitiosSiteIdGeoRouteRoute,
+  } as any)
+const AppSitiosSiteIdGeoCorridasRunIdRoute =
+  AppSitiosSiteIdGeoCorridasRunIdRouteImport.update({
+    id: '/corridas/$runId',
+    path: '/corridas/$runId',
+    getParentRoute: () => AppSitiosSiteIdGeoRouteRoute,
+  } as any)
+const AppSitiosSiteIdGeoCorridasNuevaRoute =
+  AppSitiosSiteIdGeoCorridasNuevaRouteImport.update({
+    id: '/corridas/nueva',
+    path: '/corridas/nueva',
+    getParentRoute: () => AppSitiosSiteIdGeoRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -219,6 +240,9 @@ export interface FileRoutesByFullPath {
   '/sitios/$siteId/geo/marca': typeof AppSitiosSiteIdGeoMarcaRoute
   '/sitios/$siteId/geo/prompts': typeof AppSitiosSiteIdGeoPromptsRoute
   '/sitios/$siteId/geo/': typeof AppSitiosSiteIdGeoIndexRoute
+  '/sitios/$siteId/geo/corridas/$runId': typeof AppSitiosSiteIdGeoCorridasRunIdRoute
+  '/sitios/$siteId/geo/corridas/nueva': typeof AppSitiosSiteIdGeoCorridasNuevaRoute
+  '/sitios/$siteId/geo/corridas/': typeof AppSitiosSiteIdGeoCorridasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -245,6 +269,9 @@ export interface FileRoutesByTo {
   '/sitios/$siteId/geo/marca': typeof AppSitiosSiteIdGeoMarcaRoute
   '/sitios/$siteId/geo/prompts': typeof AppSitiosSiteIdGeoPromptsRoute
   '/sitios/$siteId/geo': typeof AppSitiosSiteIdGeoIndexRoute
+  '/sitios/$siteId/geo/corridas/$runId': typeof AppSitiosSiteIdGeoCorridasRunIdRoute
+  '/sitios/$siteId/geo/corridas/nueva': typeof AppSitiosSiteIdGeoCorridasNuevaRoute
+  '/sitios/$siteId/geo/corridas': typeof AppSitiosSiteIdGeoCorridasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -278,6 +305,9 @@ export interface FileRoutesById {
   '/_app/sitios/$siteId/geo/marca': typeof AppSitiosSiteIdGeoMarcaRoute
   '/_app/sitios/$siteId/geo/prompts': typeof AppSitiosSiteIdGeoPromptsRoute
   '/_app/sitios/$siteId/geo/': typeof AppSitiosSiteIdGeoIndexRoute
+  '/_app/sitios/$siteId/geo/corridas/$runId': typeof AppSitiosSiteIdGeoCorridasRunIdRoute
+  '/_app/sitios/$siteId/geo/corridas/nueva': typeof AppSitiosSiteIdGeoCorridasNuevaRoute
+  '/_app/sitios/$siteId/geo/corridas/': typeof AppSitiosSiteIdGeoCorridasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -310,6 +340,9 @@ export interface FileRouteTypes {
     | '/sitios/$siteId/geo/marca'
     | '/sitios/$siteId/geo/prompts'
     | '/sitios/$siteId/geo/'
+    | '/sitios/$siteId/geo/corridas/$runId'
+    | '/sitios/$siteId/geo/corridas/nueva'
+    | '/sitios/$siteId/geo/corridas/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -336,6 +369,9 @@ export interface FileRouteTypes {
     | '/sitios/$siteId/geo/marca'
     | '/sitios/$siteId/geo/prompts'
     | '/sitios/$siteId/geo'
+    | '/sitios/$siteId/geo/corridas/$runId'
+    | '/sitios/$siteId/geo/corridas/nueva'
+    | '/sitios/$siteId/geo/corridas'
   id:
     | '__root__'
     | '/'
@@ -368,6 +404,9 @@ export interface FileRouteTypes {
     | '/_app/sitios/$siteId/geo/marca'
     | '/_app/sitios/$siteId/geo/prompts'
     | '/_app/sitios/$siteId/geo/'
+    | '/_app/sitios/$siteId/geo/corridas/$runId'
+    | '/_app/sitios/$siteId/geo/corridas/nueva'
+    | '/_app/sitios/$siteId/geo/corridas/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -590,6 +629,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSitiosSiteIdGeoPromptsRouteImport
       parentRoute: typeof AppSitiosSiteIdGeoRouteRoute
     }
+    '/_app/sitios/$siteId/geo/corridas/': {
+      id: '/_app/sitios/$siteId/geo/corridas/'
+      path: '/corridas'
+      fullPath: '/sitios/$siteId/geo/corridas/'
+      preLoaderRoute: typeof AppSitiosSiteIdGeoCorridasIndexRouteImport
+      parentRoute: typeof AppSitiosSiteIdGeoRouteRoute
+    }
+    '/_app/sitios/$siteId/geo/corridas/$runId': {
+      id: '/_app/sitios/$siteId/geo/corridas/$runId'
+      path: '/corridas/$runId'
+      fullPath: '/sitios/$siteId/geo/corridas/$runId'
+      preLoaderRoute: typeof AppSitiosSiteIdGeoCorridasRunIdRouteImport
+      parentRoute: typeof AppSitiosSiteIdGeoRouteRoute
+    }
+    '/_app/sitios/$siteId/geo/corridas/nueva': {
+      id: '/_app/sitios/$siteId/geo/corridas/nueva'
+      path: '/corridas/nueva'
+      fullPath: '/sitios/$siteId/geo/corridas/nueva'
+      preLoaderRoute: typeof AppSitiosSiteIdGeoCorridasNuevaRouteImport
+      parentRoute: typeof AppSitiosSiteIdGeoRouteRoute
+    }
   }
 }
 
@@ -629,6 +689,9 @@ interface AppSitiosSiteIdGeoRouteRouteChildren {
   AppSitiosSiteIdGeoMarcaRoute: typeof AppSitiosSiteIdGeoMarcaRoute
   AppSitiosSiteIdGeoPromptsRoute: typeof AppSitiosSiteIdGeoPromptsRoute
   AppSitiosSiteIdGeoIndexRoute: typeof AppSitiosSiteIdGeoIndexRoute
+  AppSitiosSiteIdGeoCorridasRunIdRoute: typeof AppSitiosSiteIdGeoCorridasRunIdRoute
+  AppSitiosSiteIdGeoCorridasNuevaRoute: typeof AppSitiosSiteIdGeoCorridasNuevaRoute
+  AppSitiosSiteIdGeoCorridasIndexRoute: typeof AppSitiosSiteIdGeoCorridasIndexRoute
 }
 
 const AppSitiosSiteIdGeoRouteRouteChildren: AppSitiosSiteIdGeoRouteRouteChildren =
@@ -636,6 +699,9 @@ const AppSitiosSiteIdGeoRouteRouteChildren: AppSitiosSiteIdGeoRouteRouteChildren
     AppSitiosSiteIdGeoMarcaRoute: AppSitiosSiteIdGeoMarcaRoute,
     AppSitiosSiteIdGeoPromptsRoute: AppSitiosSiteIdGeoPromptsRoute,
     AppSitiosSiteIdGeoIndexRoute: AppSitiosSiteIdGeoIndexRoute,
+    AppSitiosSiteIdGeoCorridasRunIdRoute: AppSitiosSiteIdGeoCorridasRunIdRoute,
+    AppSitiosSiteIdGeoCorridasNuevaRoute: AppSitiosSiteIdGeoCorridasNuevaRoute,
+    AppSitiosSiteIdGeoCorridasIndexRoute: AppSitiosSiteIdGeoCorridasIndexRoute,
   }
 
 const AppSitiosSiteIdGeoRouteRouteWithChildren =

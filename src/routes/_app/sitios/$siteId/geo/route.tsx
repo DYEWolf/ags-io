@@ -16,6 +16,14 @@ function GeoLayout() {
     <div className="flex flex-col gap-6">
       <nav className="flex flex-wrap gap-2" aria-label="Secciones de GEO">
         <Link
+          to="/sitios/$siteId/geo/corridas"
+          params={{ siteId }}
+          className={subtabClass}
+          activeProps={{ className: subtabActive }}
+        >
+          Corridas
+        </Link>
+        <Link
           to="/sitios/$siteId/geo/prompts"
           params={{ siteId }}
           className={subtabClass}

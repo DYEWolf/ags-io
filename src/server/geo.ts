@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto'
 import { and, asc, count, desc, eq } from 'drizzle-orm'
 import { db } from '~/db/client'
 import { isUniqueViolation } from '~/db/errors'
-import { brandAliases, competitors, prompts, sites, type Competitor } from '~/db/schema'
+import { brandAliases, competitors, llmRuns, prompts, sites, type Competitor } from '~/db/schema'
 import {
   competitorTerms,
   findTermConflict,
@@ -66,9 +66,11 @@ export async function getGeoConfig(organizationId: string, siteId: string) {
   if (!site) return null
   const [promptRows, competitorRows, aliasRows] = await Promise.all([
     db
-      .select()
+      .select({ prompt: prompts, runCount: count(llmRuns.id) })
       .from(prompts)
+      .leftJoin(llmRuns, eq(llmRuns.promptId, prompts.id))
       .where(eq(prompts.siteId, siteId))
+      .groupBy(prompts.id)
       .orderBy(desc(prompts.active), asc(prompts.createdAt)),
     db
       .select()
@@ -121,6 +123,22 @@ export async function updatePrompt(
     return await db.transaction(async (tx) => {
       const siteId = await siteOfPrompt(tx, organizationId, promptId)
       if (!siteId) return null
+      // Con corridas, cambiar el texto cambiaría el significado de su historial (R-054).
+      const [current] = await tx
+        .select({ text: prompts.text })
+        .from(prompts)
+        .where(eq(prompts.id, promptId))
+        .for('update')
+      const [runs] = await tx
+        .select({ n: count() })
+        .from(llmRuns)
+        .where(eq(llmRuns.promptId, promptId))
+      if (current && (runs?.n ?? 0) > 0 && current.text !== data.text) {
+        return fail(
+          'text',
+          'Este prompt ya tiene corridas: su texto no se puede cambiar. Archívalo y crea uno nuevo.',
+        )
+      }
       await tx
         .update(prompts)
         .set({ ...data, textKey: promptKey(data.text) })

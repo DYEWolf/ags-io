@@ -35,7 +35,8 @@ export function domainKey(domain: string): string {
   return domain.startsWith('www.') ? domain.slice(4) : domain
 }
 
-function hostMatches(host: string, domain: string): boolean {
+/** `host` es el dominio del sitio o uno de sus subdominios (con o sin `www.`). */
+export function hostMatches(host: string, domain: string): boolean {
   const key = domainKey(domain)
   return host === key || host.endsWith(`.${key}`)
 }

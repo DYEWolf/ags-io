@@ -64,6 +64,7 @@ export function PromptForm({
     'No se pudo guardar el prompt. Inténtalo de nuevo.',
   )
   const [intent, setIntent] = useState<PromptIntent>(prompt?.intent ?? 'category')
+  const textLocked = (prompt?.runCount ?? 0) > 0
   const locale = prompt?.locale ?? defaults.locale
   const locales = LOCALES.some(([code]) => code === locale)
     ? LOCALES
@@ -101,12 +102,16 @@ export function PromptForm({
             required
             maxLength={MAX_PROMPT_CHARS}
             defaultValue={prompt?.text}
+            // Con corridas el texto no cambia (el servidor también lo impide); readOnly sí se envía.
+            readOnly={textLocked}
             placeholder="¿Cuál es la mejor panadería de masa madre en Coyoacán?"
-            className={textareaClass}
+            className={`${textareaClass} read-only:bg-neutral-100 read-only:text-neutral-600`}
           />
         </label>
         <p className="text-xs text-neutral-500">
-          Escríbelo como lo preguntaría un cliente en ChatGPT o Perplexity.
+          {textLocked
+            ? 'Ya tiene corridas: el texto no se puede cambiar. Si quieres otra pregunta, archiva este prompt y crea uno nuevo.'
+            : 'Escríbelo como lo preguntaría un cliente en ChatGPT o Perplexity.'}
         </p>
         <FieldError message={errors['text']} />
       </div>

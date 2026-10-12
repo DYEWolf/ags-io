@@ -1,8 +1,21 @@
 // GEO (R-050): prompts, competidores y alias de marca de cada sitio. Todo cuelga del sitio y se
 // borra con él (ON DELETE CASCADE); la organización se valida a través de `sites`.
 import { sql } from 'drizzle-orm'
-import { boolean, check, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  check,
+  index,
+  jsonb,
+  numeric,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core'
 import type { PromptIntent } from '~/domain/geo/config'
+import type { Citation, Engine, RunMode, RunSource } from '~/domain/geo/runs'
+import { user } from './auth'
 import { sites } from './sites'
 
 const tstz = (name: string) => timestamp(name, { withTimezone: true, mode: 'date' })
@@ -70,6 +83,74 @@ export const brandAliases = pgTable(
   (table) => [uniqueIndex('brand_aliases_site_alias_key_uidx').on(table.siteId, table.aliasKey)],
 )
 
+/** Evidencia cruda de una corrida: el texto pegado (manual) o la respuesta de la API (M11). */
+export interface RunRaw {
+  text: string
+}
+
+// R-051/R-052: una corrida = una respuesta de un motor a un prompt. Se guarda la evidencia cruda
+// para poder recalcular menciones y métricas (SPEC §1.2).
+export const llmRuns = pgTable(
+  'llm_runs',
+  {
+    id: text('id').primaryKey(),
+    promptId: text('prompt_id')
+      .notNull()
+      .references(() => prompts.id, { onDelete: 'cascade' }),
+    // Redundante con el prompt, para filtrar por sitio sin join y acotar por organización.
+    siteId: text('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    engine: text('engine').$type<Engine>().notNull(),
+    mode: text('mode').$type<RunMode>(),
+    model: text('model'),
+    source: text('source').$type<RunSource>().notNull(),
+    runAt: tstz('run_at').notNull(),
+    raw: jsonb('raw').$type<RunRaw>().notNull(),
+    citations: jsonb('citations').$type<Citation[]>().notNull().default([]),
+    // Solo corridas automáticas (M11); las manuales no tienen costo.
+    costUsd: numeric('cost_usd', { precision: 12, scale: 6, mode: 'number' }),
+    notes: text('notes'),
+    createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: tstz('created_at').notNull().defaultNow(),
+    updatedAt: tstz('updated_at')
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index('llm_runs_site_run_at_idx').on(table.siteId, table.runAt),
+    index('llm_runs_prompt_run_at_idx').on(table.promptId, table.runAt),
+    check(
+      'llm_runs_engine_check',
+      sql`${table.engine} in ('chatgpt', 'perplexity', 'gemini', 'google_ai_overviews', 'google_ai_mode', 'copilot', 'claude')`,
+    ),
+    check(
+      'llm_runs_mode_check',
+      sql`${table.mode} is null or ${table.mode} in ('standard', 'web_search', 'reasoning', 'deep_research')`,
+    ),
+    check('llm_runs_source_check', sql`${table.source} in ('manual', 'auto')`),
+  ],
+)
+
+// R-053: una fila por URL citada en una corrida, con su dominio (sin `www.`) y si es del sitio.
+export const citedDomains = pgTable(
+  'cited_domains',
+  {
+    runId: text('run_id')
+      .notNull()
+      .references(() => llmRuns.id, { onDelete: 'cascade' }),
+    url: text('url').notNull(),
+    domain: text('domain').notNull(),
+    own: boolean('own').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.runId, table.url] }),
+    index('cited_domains_domain_idx').on(table.domain),
+  ],
+)
+
 export type Prompt = typeof prompts.$inferSelect
 export type Competitor = typeof competitors.$inferSelect
 export type BrandAlias = typeof brandAliases.$inferSelect
+export type LlmRun = typeof llmRuns.$inferSelect
