@@ -54,7 +54,9 @@ Entrega al admin un **guion de e2e manual**:
 - Casos negativos (qué debe fallar y cómo).
 - Cómo volver a un estado limpio.
 
-Después espera la aprobación explícita del admin. No empieces el siguiente módulo sin ella.
+Antes de entregarlo, actualiza la sección **Estado** de `CLAUDE.md` (módulo "Listo para e2e", siguiente recomendado, credenciales nuevas, pendientes) e inclúyelo en el commit.
+
+Después espera la aprobación explícita del admin. No empieces el siguiente módulo sin ella. Cuando apruebe, marca el módulo ✅ en la tabla de Estado de `CLAUDE.md`, ajusta "Siguiente recomendado" y haz commit `docs(repo): estado tras aprobar M<n>`: una sesión nueva debe poder arrancar el siguiente módulo solo con "empieza módulo M<n>".
 
 ## 6. Pull request (cuando el admin lo pida o el flujo use ramas)
 
