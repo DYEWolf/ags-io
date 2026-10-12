@@ -82,6 +82,27 @@ export interface AuditPageView {
   findings: number
 }
 
+export interface DiffItem {
+  title: string
+  severity: Severity
+  url: string | null
+}
+
+export interface DiffView {
+  previousScore: number | null
+  newCount: number
+  resolvedCount: number
+  persistingCount: number
+  added: DiffItem[]
+  resolved: DiffItem[]
+}
+
+function diffItems(items: { rule: string; url: string | null }[]): DiffItem[] {
+  return items.flatMap(({ rule, url }) =>
+    isRuleId(rule) ? [{ title: RULES[rule].title, severity: RULES[rule].severity, url }] : [],
+  )
+}
+
 export interface SpeedRow {
   url: string
   strategy: Strategy
@@ -102,6 +123,8 @@ export interface SiteAuditView {
   keyPaths: string[]
   /** PageSpeed de las rutas clave en la última auditoría terminada. */
   speed: SpeedRow[]
+  /** Cambios respecto a la auditoría anterior (null si es la primera). */
+  diff: DiffView | null
   capped: boolean
   groups: FindingGroup[]
   pages: AuditPageView[]
@@ -217,6 +240,16 @@ export async function getSiteAudit(
     robots: latest?.summary?.robots ?? null,
     keyPaths: site.keyPaths,
     speed,
+    diff: latest?.summary?.diff
+      ? {
+          previousScore: latest.summary.diff.previousScore,
+          newCount: latest.summary.diff.newCount,
+          resolvedCount: latest.summary.diff.resolvedCount,
+          persistingCount: latest.summary.diff.persistingCount,
+          added: diffItems(latest.summary.diff.added),
+          resolved: diffItems(latest.summary.diff.resolved),
+        }
+      : null,
     sitemapSource: latest?.summary?.sitemapSource ?? null,
     capped: latest?.summary?.capped ?? false,
     groups,

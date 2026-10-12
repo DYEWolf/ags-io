@@ -13,6 +13,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import type { RobotsOutcome } from '~/domain/audit/crawl'
 import type { Severity } from '~/domain/audit/rules'
+import type { AuditDiff } from '~/domain/audit/score'
 import type { FieldData, LabData, Strategy } from '~/domain/audit/speed'
 import { user } from './auth'
 import { sites } from './sites'
@@ -34,6 +35,8 @@ export interface AuditSummary {
   speedMeasured?: number
   /** Acceso de cada bot a las rutas clave según robots.txt (T8.4). */
   robots?: RobotsOutcome
+  /** Cambios respecto a la auditoría anterior (T8.6; null si es la primera). */
+  diff?: AuditDiff | null
   sitemaps: string[]
   sitemapSource: 'robots' | 'default' | 'none'
   capped: boolean

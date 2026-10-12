@@ -1,7 +1,8 @@
 // Ejecución de una auditoría técnica (R-030–R-034). La llama el job `audit.run`.
 // Idempotente: un reintento borra lo que dejó el intento anterior y empieza de cero.
 import { setTimeout as sleep } from 'node:timers/promises'
-import { eq } from 'drizzle-orm'
+import { randomUUID } from 'node:crypto'
+import { and, desc, eq, ne } from 'drizzle-orm'
 import { extractPage, isHtml, loadHtml } from '~/audit/extract'
 import { auditFetch, describeFetchError, type FetchResult } from '~/audit/http'
 import { describeRenderError, MAX_RENDERED, Renderer } from '~/audit/render'
@@ -9,6 +10,7 @@ import { discoverSitemaps, type SitemapDiscovery } from '~/audit/sitemap'
 import { measureSpeed } from '~/audit/speed'
 import { db } from '~/db/client'
 import {
+  alerts,
   auditFindings,
   auditPages,
   audits,
@@ -19,6 +21,7 @@ import {
 } from '~/db/schema'
 import { evaluateDuplicates, evaluatePage, type PageFacts } from '~/domain/audit/onpage'
 import { compareRender, type PageVersion } from '~/domain/audit/render'
+import { diffFindings, healthScore, type AuditDiff } from '~/domain/audit/score'
 import { StructuredDataCollector } from '~/domain/audit/structured'
 import { evaluateRobots, evaluateSitemapEntries, type RobotsOutcome } from '~/domain/audit/crawl'
 import { RULES, SEVERITIES, severityOf, type Finding, type Severity } from '~/domain/audit/rules'
@@ -274,6 +277,56 @@ async function checkLinks(
   return { findings, checked }
 }
 
+/** Última auditoría terminada del sitio con sus hallazgos (si aún conserva el detalle). */
+async function previousAudit(siteId: string, currentId: string) {
+  const [previous] = await db
+    .select({ id: audits.id, score: audits.score })
+    .from(audits)
+    .where(and(eq(audits.siteId, siteId), eq(audits.status, 'done'), ne(audits.id, currentId)))
+    .orderBy(desc(audits.finishedAt))
+    .limit(1)
+  if (!previous) return null
+  const findings = await db
+    .select({ rule: auditFindings.rule, url: auditFindings.url })
+    .from(auditFindings)
+    .where(eq(auditFindings.auditId, previous.id))
+  return { auditId: previous.id, score: previous.score, findings }
+}
+
+/**
+ * R-061: JSON-LD que deja de ser JSON válido. Se registra en `alerts` (Telegram llega en M12)
+ * solo si es nuevo respecto a la auditoría anterior, para no repetirla cada semana.
+ */
+async function alertBrokenJsonLd(
+  site: Site,
+  auditId: string,
+  findings: Finding[],
+  diff: AuditDiff | null,
+) {
+  const broken = findings.filter((finding) => finding.rule === 'jsonld_invalid')
+  if (broken.length === 0) return
+  const fresh = diff
+    ? diff.added.filter((finding) => finding.rule === 'jsonld_invalid').length
+    : broken.length
+  if (fresh === 0) return
+  await db
+    .insert(alerts)
+    .values({
+      id: randomUUID(),
+      type: 'jsonld_broken',
+      dedupeKey: `jsonld_broken:${site.id}:${auditId}`,
+      organizationId: site.organizationId,
+      siteId: site.id,
+      payload: {
+        domain: site.domain,
+        auditId,
+        pages: broken.length,
+        sample: broken.slice(0, 5).map((finding) => finding.url),
+      },
+    })
+    .onConflictDoNothing()
+}
+
 /** La portada (ruta `/`) primero; el resto en el orden del sitemap. */
 function homeFirst(urls: string[]): string[] {
   const isHome = (url: string) => new URL(url).pathname === '/'
@@ -420,16 +473,21 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
     robotsCheck.outcome,
     findings,
   )
+  const score = healthScore(findings, checked)
+  const previous = await previousAudit(site.id, auditId)
+  summary.diff = previous ? diffFindings(previous, findings) : null
   await db
     .update(audits)
-    .set({ status: 'done', finishedAt: new Date(), summary, error: null })
+    .set({ status: 'done', finishedAt: new Date(), score, summary, error: null })
     .where(eq(audits.id, auditId))
+  await alertBrokenJsonLd(site, auditId, findings, summary.diff)
   log.info(
     {
       siteId: site.id,
       auditId,
       pages: checked,
       rendered: summary.pagesRendered,
+      score,
       counts: summary.counts,
       // Memoria del worker al terminar (MiB): vigila R-070 en la VPS compartida.
       memory: Object.fromEntries(

@@ -102,9 +102,10 @@ export async function runPagespeed(
   const data = responseSchema.parse(await response.json())
   const lighthouse = data.lighthouseResult
   if (lighthouse?.runtimeError?.code && lighthouse.runtimeError.code !== 'NO_ERROR') {
+    // Suelen ser transitorios (FAILED_DOCUMENT_REQUEST por timeout desde Google): un reintento.
     throw new PagespeedError(
       lighthouse.runtimeError.message?.slice(0, 300) ?? lighthouse.runtimeError.code,
-      false,
+      true,
     )
   }
   const value = (key: string) => lighthouse?.audits?.[key]?.numericValue ?? null

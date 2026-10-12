@@ -186,6 +186,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 - Las auditorías DEBEN ejecutarse semanalmente en ventana nocturna (02:00–06:00 America/Mexico_City), con concurrencia de Playwright = 1.
 - CUANDO una auditoría termine, EL SISTEMA DEBE generar un puntaje de salud por sitio y un diff contra la auditoría anterior.
 - *Diseño (M8)*: `audit.schedule` corre los lunes a las 02:00 America/Mexico_City (`missed: once`) y crea una auditoría por sitio **activo** (los pausados no se auditan: Chromium consume RAM de la VPS compartida). `audit.run` procesa de una en una; una programada que no alcanza a empezar dentro de la ventana se difiere al siguiente inicio de ventana. El cliente puede pedir una **auditoría manual** por sitio cada 24 h, que corre al momento (fuera de la ventana, con la misma concurrencia 1); si hay una programada esperando su ventana, esa se adelanta y pasa a manual. La ventana limita el inicio: una auditoría larga puede terminar después de las 06:00. Un índice parcial impide dos auditorías pendientes del mismo sitio. Se conservan páginas y hallazgos de las últimas 12 auditorías por sitio; de las anteriores, score y resumen. Las que el worker no terminó se marcan fallidas (en curso > 6 h, en cola > 7 días). `pnpm audit:run <dominio|id> [--inline]` lanza una sin la espera de 24 h (desarrollo y soporte).
+- *Diseño (M8, score y diff)*: score = 100 − Σ penalizaciones por regla incumplida (`domain/audit/score.ts`): error 10, aviso 4, info 1, multiplicado por la proporción de páginas afectadas con un mínimo del 40 % (una regla del sitio resta su peso completo); no restan los límites del auditor, los fallos de PageSpeed ni bloquear el entrenamiento de IA. El diff compara regla + URL contra la última auditoría terminada: nuevos, resueltos y persistentes (muestra hasta 50 de cada uno) y la variación del score; la vista muestra el score con su variación, los cambios y la tendencia del historial. **Alerta (R-061)**: cuando aparece JSON-LD inválido nuevo respecto a la auditoría anterior se registra `jsonld_broken` en `alerts` (Telegram en M12).
 
 ### 4.5 Rank tracking
 
@@ -497,7 +498,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [x] T8.3 Extracción y validación de JSON-LD (vocabulario de schema.org versionado) + datos del negocio en el sitio y chequeo de nombre, dirección y teléfono.
 - [x] T8.4 robots.txt público por bot (rutas clave del sitio) + validación de sitemap + enlaces rotos.
 - [x] T8.5 PageSpeed Insights API (lab + CrUX) para las rutas clave, móvil y escritorio.
-- [ ] T8.6 Score de salud y diff entre auditorías.
+- [x] T8.6 Score de salud, diff entre auditorías, tendencia y alerta de JSON-LD roto.
 
 ### M9 — Rank tracking (R-040–R-043)
 - [ ] T9.1 `SerpProvider` + adaptador Serper.

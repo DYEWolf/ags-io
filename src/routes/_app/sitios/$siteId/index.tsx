@@ -47,6 +47,7 @@ function AuditPage() {
       {view.latest?.status === 'done' ? (
         <>
           {view.robots ? <RobotsSection robots={view.robots} keyPaths={view.keyPaths} /> : null}
+          {view.diff ? <DiffSection diff={view.diff} /> : null}
           {view.speed.length > 0 ? <SpeedSection rows={view.speed} /> : null}
           <FindingsSection groups={view.groups} />
           <PagesSection />
@@ -119,7 +120,7 @@ function SummaryCard() {
         {message ? <Alert tone={message.tone}>{message.text}</Alert> : null}
 
         {latest ? (
-          <LatestRun run={latest} />
+          <LatestRun run={latest} previousScore={view.diff?.previousScore ?? null} />
         ) : pending ? null : (
           <p className="text-sm text-neutral-600">Este sitio aún no tiene auditorías.</p>
         )}
@@ -144,7 +145,26 @@ function SummaryCard() {
   )
 }
 
-function LatestRun({ run }: { run: AuditRunView }) {
+function scoreTone(score: number) {
+  return score >= 90 ? 'text-green-700' : score >= 50 ? 'text-amber-700' : 'text-red-700'
+}
+
+function ScoreLine({ score, previous }: { score: number; previous: number | null }) {
+  const delta = previous === null ? null : score - previous
+  return (
+    <div className="flex items-baseline gap-3">
+      <span className={`text-4xl font-semibold tabular-nums ${scoreTone(score)}`}>{score}</span>
+      <span className="text-sm text-neutral-500">/ 100 de salud técnica</span>
+      {delta !== null && delta !== 0 ? (
+        <span className={`text-sm tabular-nums ${delta > 0 ? 'text-green-700' : 'text-red-700'}`}>
+          {delta > 0 ? '▲' : '▼'} {Math.abs(delta)} desde la anterior
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
+function LatestRun({ run, previousScore }: { run: AuditRunView; previousScore: number | null }) {
   if (run.status === 'failed') {
     return (
       <Alert tone="error">
@@ -156,6 +176,7 @@ function LatestRun({ run }: { run: AuditRunView }) {
   const counts = run.counts ?? { error: 0, warning: 0, notice: 0 }
   return (
     <div className="flex flex-col gap-3">
+      {run.score !== null ? <ScoreLine score={run.score} previous={previousScore} /> : null}
       <p className="text-sm text-neutral-600">
         Última auditoría: {formatDate(run.finishedAt ?? run.createdAt)} · {run.pagesChecked ?? 0}{' '}
         página(s) revisada(s)
@@ -254,6 +275,57 @@ function RobotsSection({
   )
 }
 
+function DiffList({
+  items,
+  empty,
+}: {
+  items: NonNullable<AuditView['diff']>['added']
+  empty: string
+}) {
+  if (items.length === 0) return <p className="text-sm text-neutral-500">{empty}</p>
+  return (
+    <ul className="flex flex-col gap-1 text-sm">
+      {items.map((item, index) => (
+        <li key={`${item.title}-${item.url ?? 'site'}-${String(index)}`} className="flex gap-2">
+          <Badge tone={severityTone[item.severity]}>{severityLabel[item.severity]}</Badge>
+          <span className="break-all">
+            {item.title}
+            <span className="text-neutral-500"> — {item.url ?? 'todo el sitio'}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function DiffSection({ diff }: { diff: NonNullable<AuditView['diff']> }) {
+  return (
+    <Card
+      title="Cambios desde la auditoría anterior"
+      description={`${String(diff.newCount)} nuevo(s), ${String(diff.resolvedCount)} resuelto(s) y ${String(diff.persistingCount)} que siguen igual.`}
+    >
+      <div className="grid gap-6 md:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-semibold">Nuevos</h3>
+          <DiffList items={diff.added} empty="Ningún problema nuevo." />
+          {diff.newCount > diff.added.length ? (
+            <p className="text-xs text-neutral-500">Y {diff.newCount - diff.added.length} más.</p>
+          ) : null}
+        </div>
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-semibold">Resueltos</h3>
+          <DiffList items={diff.resolved} empty="Nada resuelto desde la anterior." />
+          {diff.resolvedCount > diff.resolved.length ? (
+            <p className="text-xs text-neutral-500">
+              Y {diff.resolvedCount - diff.resolved.length} más.
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </Card>
+  )
+}
+
 const ratingTone = { good: 'green', 'needs-improvement': 'amber', poor: 'red' } as const
 
 function Vital({ metric, value }: { metric: VitalKey; value: number | null }) {
@@ -276,7 +348,7 @@ function SpeedSection({ rows }: { rows: AuditView['speed'] }) {
       <Table head={['Ruta', 'Dispositivo', 'Puntaje', 'LCP', 'INP', 'CLS', 'Campo']}>
         {rows.map((row) => (
           <tr key={`${row.url}-${row.strategy}`}>
-            <td className="max-w-xs px-4 py-2 font-mono text-xs break-all">
+            <td className="px-4 py-2 font-mono text-xs whitespace-nowrap">
               {new URL(row.url).pathname}
               {new URL(row.url).search}
             </td>
@@ -402,11 +474,44 @@ function PagesSection() {
   )
 }
 
+/** Tendencia del score (de la más antigua a la más reciente), sin librería de gráficas. */
+function Sparkline({ runs }: { runs: AuditRunView[] }) {
+  const scores = runs
+    .filter((run) => run.score !== null)
+    .map((run) => run.score ?? 0)
+    .reverse()
+  if (scores.length < 2) return null
+  const width = 160
+  const height = 32
+  const step = width / (scores.length - 1)
+  const points = scores
+    .map(
+      (score, index) =>
+        `${(index * step).toFixed(1)},${(height - (score / 100) * height).toFixed(1)}`,
+    )
+    .join(' ')
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${String(width)} ${String(height)}`}
+      role="img"
+      aria-label={`Tendencia de salud: ${scores.join(', ')}`}
+      className="overflow-visible text-neutral-900"
+    >
+      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  )
+}
+
 function HistorySection({ runs }: { runs: AuditRunView[] }) {
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-base font-semibold">Historial</h2>
-      <Table head={['Fecha', 'Tipo', 'Estado', 'Páginas', 'Errores', 'Avisos', 'Info']}>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold">Historial</h2>
+        <Sparkline runs={runs} />
+      </div>
+      <Table head={['Fecha', 'Tipo', 'Estado', 'Salud', 'Páginas', 'Errores', 'Avisos', 'Info']}>
         {runs.map((run) => (
           <tr key={run.id}>
             <td className="px-4 py-2 whitespace-nowrap">{formatDate(run.createdAt)}</td>
@@ -417,6 +522,11 @@ function HistorySection({ runs }: { runs: AuditRunView[] }) {
               ) : (
                 <Badge tone="red">Fallida</Badge>
               )}
+            </td>
+            <td
+              className={`px-4 py-2 font-medium tabular-nums ${run.score === null ? '' : scoreTone(run.score)}`}
+            >
+              {run.score ?? '—'}
             </td>
             <td className="px-4 py-2 tabular-nums">{run.pagesChecked ?? '—'}</td>
             <td className="px-4 py-2 tabular-nums">{run.counts?.error ?? '—'}</td>
