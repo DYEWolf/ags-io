@@ -1,6 +1,7 @@
 import { createFileRoute, getRouteApi, useRouter } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { Alert, Badge, Button, Card, dateTimeFormat, Table } from '~/components/ui'
+import { rate, type VitalKey } from '~/domain/audit/speed'
 import { getSiteAudit, requestAudit } from '~/functions/audits'
 
 const siteRoute = getRouteApi('/_app/sitios/$siteId')
@@ -23,10 +24,14 @@ const severityTone = { error: 'red', warning: 'amber', notice: 'neutral' } as co
 
 const formatDate = (iso: string) => dateTimeFormat.format(new Date(iso))
 
+const isWaitingForWindow = (run: AuditRunView) =>
+  run.status === 'queued' && run.trigger === 'scheduled'
+
 function AuditPage() {
   const router = useRouter()
   const view = Route.useLoaderData()
-  const pending = view.pending !== null
+  // Una programada que espera la ventana nocturna no se vigila: puede tardar horas en empezar.
+  const pending = view.pending !== null && !isWaitingForWindow(view.pending)
 
   useEffect(() => {
     if (!pending) return
@@ -42,6 +47,7 @@ function AuditPage() {
       {view.latest?.status === 'done' ? (
         <>
           {view.robots ? <RobotsSection robots={view.robots} keyPaths={view.keyPaths} /> : null}
+          {view.speed.length > 0 ? <SpeedSection rows={view.speed} /> : null}
           <FindingsSection groups={view.groups} />
           <PagesSection />
         </>
@@ -58,6 +64,7 @@ function SummaryCard() {
   const [requesting, setRequesting] = useState(false)
   const [message, setMessage] = useState<{ tone: 'error'; text: string } | null>(null)
   const { latest, pending } = view
+  const waiting = pending !== null && isWaitingForWindow(pending)
 
   async function run() {
     setRequesting(true)
@@ -88,7 +95,7 @@ function SummaryCard() {
   const paused = site.status === 'paused'
   const blockedReason = paused
     ? 'El sitio está pausado: no se audita.'
-    : pending
+    : pending && !waiting
       ? null
       : view.manualAvailableAt
         ? `Próxima auditoría manual disponible el ${formatDate(view.manualAvailableAt)}`
@@ -104,7 +111,9 @@ function SummaryCard() {
           <Alert tone="info">
             {pending.status === 'running'
               ? `Auditoría en curso (desde ${formatDate(pending.startedAt ?? pending.createdAt)}); esta página se actualiza sola`
-              : `Auditoría en cola (desde ${formatDate(pending.createdAt)}); esta página se actualiza sola`}
+              : waiting
+                ? 'La auditoría semanal correrá en la próxima ventana nocturna (02:00–06:00). Puedes adelantarla con "Auditar ahora".'
+                : `Auditoría en cola (desde ${formatDate(pending.createdAt)}); esta página se actualiza sola`}
           </Alert>
         ) : null}
         {message ? <Alert tone={message.tone}>{message.text}</Alert> : null}
@@ -123,7 +132,7 @@ function SummaryCard() {
           <Button
             variant="secondary"
             pending={requesting}
-            disabled={paused || pending !== null || view.manualAvailableAt !== null}
+            disabled={paused || (pending !== null && !waiting) || view.manualAvailableAt !== null}
             onClick={() => void run()}
           >
             Auditar ahora
@@ -238,6 +247,61 @@ function RobotsSection({
                 </span>
               )}
             </td>
+          </tr>
+        ))}
+      </Table>
+    </Card>
+  )
+}
+
+const ratingTone = { good: 'green', 'needs-improvement': 'amber', poor: 'red' } as const
+
+function Vital({ metric, value }: { metric: VitalKey; value: number | null }) {
+  if (value === null) return <span className="text-neutral-400">—</span>
+  const text =
+    metric === 'lcpMs'
+      ? `${(value / 1000).toFixed(1)} s`
+      : metric === 'inpMs'
+        ? `${String(Math.round(value))} ms`
+        : value.toFixed(2)
+  return <Badge tone={ratingTone[rate(metric, value)]}>{text}</Badge>
+}
+
+function SpeedSection({ rows }: { rows: AuditView['speed'] }) {
+  return (
+    <Card
+      title="Rendimiento (PageSpeed Insights)"
+      description="Datos de campo: percentil 75 de visitas reales de Chrome (CrUX), lo que usa Google para el ranking. Si la página no tiene suficientes visitas, se muestran los de todo el sitio. El puntaje es de laboratorio."
+    >
+      <Table head={['Ruta', 'Dispositivo', 'Puntaje', 'LCP', 'INP', 'CLS', 'Campo']}>
+        {rows.map((row) => (
+          <tr key={`${row.url}-${row.strategy}`}>
+            <td className="max-w-xs px-4 py-2 font-mono text-xs break-all">
+              {new URL(row.url).pathname}
+              {new URL(row.url).search}
+            </td>
+            <td className="px-4 py-2">{row.strategy === 'mobile' ? 'Móvil' : 'Escritorio'}</td>
+            {row.error ? (
+              <td colSpan={5} className="px-4 py-2 text-red-700">
+                {row.error}
+              </td>
+            ) : (
+              <>
+                <td className="px-4 py-2 tabular-nums">{row.lab?.performance ?? '—'}</td>
+                <td className="px-4 py-2">
+                  <Vital metric="lcpMs" value={row.field?.lcpMs ?? null} />
+                </td>
+                <td className="px-4 py-2">
+                  <Vital metric="inpMs" value={row.field?.inpMs ?? null} />
+                </td>
+                <td className="px-4 py-2">
+                  <Vital metric="cls" value={row.field?.cls ?? null} />
+                </td>
+                <td className="px-4 py-2 text-xs text-neutral-600">
+                  {row.field ? (row.field.scope === 'page' ? 'Página' : 'Sitio') : 'Sin datos'}
+                </td>
+              </>
+            )}
           </tr>
         ))}
       </Table>

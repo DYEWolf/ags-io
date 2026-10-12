@@ -13,6 +13,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import type { RobotsOutcome } from '~/domain/audit/crawl'
 import type { Severity } from '~/domain/audit/rules'
+import type { FieldData, LabData, Strategy } from '~/domain/audit/speed'
 import { user } from './auth'
 import { sites } from './sites'
 
@@ -29,6 +30,8 @@ export interface AuditSummary {
   pagesRendered?: number
   /** Enlaces internos pedidos para buscar rotos (T8.4). */
   linksChecked?: number
+  /** Mediciones de PageSpeed correctas (ruta × dispositivo; T8.5). */
+  speedMeasured?: number
   /** Acceso de cada bot a las rutas clave según robots.txt (T8.4). */
   robots?: RobotsOutcome
   sitemaps: string[]
@@ -106,6 +109,35 @@ export const auditFindings = pgTable(
       'audit_findings_severity_check',
       sql`${table.severity} in ('error', 'warning', 'notice')`,
     ),
+  ],
+)
+
+/**
+ * PageSpeed Insights por ruta clave y dispositivo (R-033): laboratorio (Lighthouse) y campo
+ * (CrUX p75). Va ligado a la auditoría que lo pidió.
+ */
+export const psiResults = pgTable(
+  'psi_results',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    auditId: text('audit_id')
+      .notNull()
+      .references(() => audits.id, { onDelete: 'cascade' }),
+    siteId: text('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    url: text('url').notNull(),
+    strategy: text('strategy').$type<Strategy>().notNull(),
+    lab: jsonb('lab').$type<LabData>(),
+    field: jsonb('field').$type<FieldData>(),
+    lighthouseVersion: text('lighthouse_version'),
+    error: text('error'),
+    fetchedAt: tstz('fetched_at').notNull().defaultNow(),
+  },
+  (table) => [
+    index('psi_results_audit_idx').on(table.auditId),
+    index('psi_results_site_url_idx').on(table.siteId, table.url, table.fetchedAt),
+    check('psi_results_strategy_check', sql`${table.strategy} in ('mobile', 'desktop')`),
   ],
 )
 

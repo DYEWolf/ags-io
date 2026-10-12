@@ -336,6 +336,32 @@ export const RULES = {
     title: 'Se alcanzó el límite de enlaces revisados',
     fix: 'Solo se comprobaron los primeros enlaces internos que no están en el sitemap.',
   },
+
+  // --- Rendimiento (R-033) ---
+  cwv_poor: {
+    severity: 'error',
+    category: 'speed',
+    title: 'Core Web Vital en rojo para usuarios reales',
+    fix: 'Google usa estos datos de campo (CrUX) para el ranking: prioriza esta métrica.',
+  },
+  cwv_needs_improvement: {
+    severity: 'warning',
+    category: 'speed',
+    title: 'Core Web Vital por mejorar para usuarios reales',
+    fix: 'La métrica está entre "bueno" y "malo" en el percentil 75 de visitas reales.',
+  },
+  lab_performance_low: {
+    severity: 'warning',
+    category: 'speed',
+    title: 'Puntaje de rendimiento bajo en móvil',
+    fix: 'Revisa el informe de PageSpeed: imágenes, JavaScript que bloquea y tiempo de servidor.',
+  },
+  psi_failed: {
+    severity: 'notice',
+    category: 'speed',
+    title: 'PageSpeed Insights no pudo analizar la página',
+    fix: 'Suele ser temporal; si se repite, revisa que la página cargue en un navegador.',
+  },
 } as const satisfies Record<string, RuleInfo>
 
 export type RuleId = keyof typeof RULES

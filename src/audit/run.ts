@@ -6,8 +6,17 @@ import { extractPage, isHtml, loadHtml } from '~/audit/extract'
 import { auditFetch, describeFetchError, type FetchResult } from '~/audit/http'
 import { describeRenderError, MAX_RENDERED, Renderer } from '~/audit/render'
 import { discoverSitemaps, type SitemapDiscovery } from '~/audit/sitemap'
+import { measureSpeed } from '~/audit/speed'
 import { db } from '~/db/client'
-import { auditFindings, auditPages, audits, sites, type AuditSummary, type Site } from '~/db/schema'
+import {
+  auditFindings,
+  auditPages,
+  audits,
+  psiResults,
+  sites,
+  type AuditSummary,
+  type Site,
+} from '~/db/schema'
 import { evaluateDuplicates, evaluatePage, type PageFacts } from '~/domain/audit/onpage'
 import { compareRender, type PageVersion } from '~/domain/audit/render'
 import { StructuredDataCollector } from '~/domain/audit/structured'
@@ -167,7 +176,12 @@ async function renderPage(
 
 function summarize(
   discovery: SitemapDiscovery,
-  stats: { pagesChecked: number; pagesRendered: number; linksChecked: number },
+  stats: {
+    pagesChecked: number
+    pagesRendered: number
+    linksChecked: number
+    speedMeasured: number
+  },
   robots: RobotsOutcome,
   findings: Finding[],
 ): AuditSummary {
@@ -271,6 +285,7 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
   // Reintento: se descarta lo del intento anterior.
   await db.delete(auditPages).where(eq(auditPages.auditId, auditId))
   await db.delete(auditFindings).where(eq(auditFindings.auditId, auditId))
+  await db.delete(psiResults).where(eq(psiResults.auditId, auditId))
 
   const root = siteRoot(site.domain)
   const discovery = await discoverSitemaps(root, MAX_PAGES, signal)
@@ -373,6 +388,14 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
   const links = await checkLinks(linkSources, known, signal)
   findings.push(...links.findings)
 
+  const speed = await measureSpeed(
+    auditId,
+    site.id,
+    site.keyPaths.map((path) => new URL(path, root).href),
+    signal,
+  )
+  findings.push(...speed.findings)
+
   findings.push(...evaluateDuplicates(pages))
   findings.push(
     ...structured.finish({
@@ -392,6 +415,7 @@ export async function runAudit(auditId: string, site: Site, { log, signal }: Run
       pagesChecked: checked,
       pagesRendered: Math.min(rendered, MAX_RENDERED),
       linksChecked: links.checked,
+      speedMeasured: speed.measured,
     },
     robotsCheck.outcome,
     findings,

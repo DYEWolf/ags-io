@@ -42,6 +42,8 @@ const schema = z
 
     // Auditoría (R-030): caracteres mínimos de texto principal en el HTML sin JavaScript.
     AUDIT_MIN_TEXT_CHARS: z.coerce.number().int().min(0).max(100_000).default(250),
+    // PageSpeed Insights (R-033). Opcional: sin key la API funciona con una cuota muy baja.
+    PAGESPEED_API_KEY: z.string().min(1).optional(),
   })
   .superRefine((value, ctx) => {
     if (value.EMAIL_PROVIDER === 'resend' && !value.RESEND_API_KEY) {

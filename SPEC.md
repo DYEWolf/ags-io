@@ -180,11 +180,12 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 **R-033 Rendimiento**
 - EL SISTEMA DEBE consultar la PageSpeed Insights API (móvil y escritorio) para las URLs clave y guardar: datos de laboratorio y datos de campo CrUX (LCP, INP, CLS al p75) cuando existan.
 - EL SISTEMA NO DEBE ejecutar Lighthouse localmente en v1.
+- *Diseño (M8)*: en cada auditoría se mide cada ruta clave en móvil y escritorio (`src/providers/pagespeed.ts`, 2 llamadas simultáneas, un reintento ante 429/5xx/timeout); con `PAGESPEED_API_KEY` la cuota es amplia y sin ella la API funciona con cuota mínima. Es gratuita: no pasa por el control de gasto (R-003). Se guarda en `psi_results` solo lo necesario: puntaje y métricas de laboratorio, y LCP/INP/CLS/FCP/TTFB de campo al p75 de la página o, si no hay suficientes visitas, del origen (`scope`). Hallazgos con los umbrales oficiales de Core Web Vitals (LCP 2.5/4 s, INP 200/500 ms, CLS 0.1/0.25): "malo" es error y "por mejorar" aviso; los de origen se reportan una vez por dispositivo y métrica. Puntaje de laboratorio móvil < 50 es aviso. `psi_results` no se purga con la retención de detalle (son pocas filas y sirven para tendencias).
 
 **R-034 Programación y recursos**
 - Las auditorías DEBEN ejecutarse semanalmente en ventana nocturna (02:00–06:00 America/Mexico_City), con concurrencia de Playwright = 1.
 - CUANDO una auditoría termine, EL SISTEMA DEBE generar un puntaje de salud por sitio y un diff contra la auditoría anterior.
-- *Diseño (M8)*: `audit.schedule` corre los lunes a las 02:00 America/Mexico_City (`missed: once`) y crea una auditoría por sitio **activo** (los pausados no se auditan: Chromium consume RAM de la VPS compartida). `audit.run` procesa de una en una; una programada que no alcanza a empezar dentro de la ventana se difiere al siguiente inicio de ventana. El cliente puede pedir una **auditoría manual** por sitio cada 24 h, que corre al momento (fuera de la ventana, con la misma concurrencia 1). Un índice parcial impide dos auditorías pendientes del mismo sitio. Se conservan páginas y hallazgos de las últimas 12 auditorías por sitio; de las anteriores, score y resumen. Las que el worker no terminó se marcan fallidas (en curso > 6 h, en cola > 7 días). `pnpm audit:run <dominio|id> [--inline]` lanza una sin la espera de 24 h (desarrollo y soporte).
+- *Diseño (M8)*: `audit.schedule` corre los lunes a las 02:00 America/Mexico_City (`missed: once`) y crea una auditoría por sitio **activo** (los pausados no se auditan: Chromium consume RAM de la VPS compartida). `audit.run` procesa de una en una; una programada que no alcanza a empezar dentro de la ventana se difiere al siguiente inicio de ventana. El cliente puede pedir una **auditoría manual** por sitio cada 24 h, que corre al momento (fuera de la ventana, con la misma concurrencia 1); si hay una programada esperando su ventana, esa se adelanta y pasa a manual. La ventana limita el inicio: una auditoría larga puede terminar después de las 06:00. Un índice parcial impide dos auditorías pendientes del mismo sitio. Se conservan páginas y hallazgos de las últimas 12 auditorías por sitio; de las anteriores, score y resumen. Las que el worker no terminó se marcan fallidas (en curso > 6 h, en cola > 7 días). `pnpm audit:run <dominio|id> [--inline]` lanza una sin la espera de 24 h (desarrollo y soporte).
 
 ### 4.5 Rank tracking
 
@@ -393,7 +394,8 @@ audits         (id, site_id, trigger scheduled|manual, status queued|running|don
                 -- único (site_id) donde status en queued|running
 audit_pages    (id, audit_id, url, final_url, status, content_type, bytes, ms, error, facts jsonb)
 audit_findings (id, audit_id, url, rule, severity error|warning|notice, detail jsonb)
-psi_results    (id, site_id, url, strategy, lab jsonb, field jsonb, fetched_at)
+psi_results    (id, audit_id, site_id, url, strategy mobile|desktop, lab jsonb, field jsonb,
+                lighthouse_version, error, fetched_at)
 
 keywords       (id, site_id, text, location, lat, lng, device, locale, group, priority)
 serp_snapshots (id, keyword_id, provider, fetched_at, raw jsonb, cost_usd)
@@ -494,7 +496,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [x] T8.2 Diff contra DOM de Playwright (tráfico del navegador por el cliente con protección SSRF).
 - [x] T8.3 Extracción y validación de JSON-LD (vocabulario de schema.org versionado) + datos del negocio en el sitio y chequeo de nombre, dirección y teléfono.
 - [x] T8.4 robots.txt público por bot (rutas clave del sitio) + validación de sitemap + enlaces rotos.
-- [ ] T8.5 PageSpeed Insights API (lab + CrUX).
+- [x] T8.5 PageSpeed Insights API (lab + CrUX) para las rutas clave, móvil y escritorio.
 - [ ] T8.6 Score de salud y diff entre auditorías.
 
 ### M9 — Rank tracking (R-040–R-043)

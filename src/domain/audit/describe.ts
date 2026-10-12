@@ -159,6 +159,26 @@ export function describeFinding(rule: RuleId, detail: Detail): string | null {
         .join(', ')}`
     case 'link_limit':
       return `Se revisaron ${num(d['limit'])} enlaces; ${num(d['unchecked'])} quedaron sin revisar.`
+    case 'cwv_poor':
+    case 'cwv_needs_improvement': {
+      const metric = str(d['metric'])
+      const value = num(d['value'])
+      const label =
+        metric === 'lcpMs'
+          ? `LCP ${(value / 1000).toFixed(1)} s`
+          : metric === 'inpMs'
+            ? `INP ${String(Math.round(value))} ms`
+            : `CLS ${value.toFixed(2)}`
+      return `${label} (p75, ${str(d['strategy']) === 'mobile' ? 'móvil' : 'escritorio'}, ${
+        str(d['scope']) === 'origin' ? 'todo el sitio' : 'esta página'
+      })`
+    }
+    case 'lab_performance_low':
+      return `Puntaje ${num(d['score'])}/100${
+        d['lcpMs'] ? `, LCP de laboratorio ${(num(d['lcpMs']) / 1000).toFixed(1)} s` : ''
+      }`
+    case 'psi_failed':
+      return `${str(d['strategy']) === 'mobile' ? 'Móvil' : 'Escritorio'}: ${str(d['error'])}`
     case 'robots_missing':
     case 'jsonld_missing':
     case 'localbusiness_missing':

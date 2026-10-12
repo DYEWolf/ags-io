@@ -4,9 +4,10 @@ import { randomUUID } from 'node:crypto'
 import { and, asc, desc, eq, gt } from 'drizzle-orm'
 import { db } from '~/db/client'
 import { isUniqueViolation } from '~/db/errors'
-import { auditFindings, auditPages, audits, sites, type Audit } from '~/db/schema'
+import { auditFindings, auditPages, audits, psiResults, sites, type Audit } from '~/db/schema'
 import type { RobotsOutcome } from '~/domain/audit/crawl'
 import { describeFinding } from '~/domain/audit/describe'
+import type { FieldData, LabData, Strategy } from '~/domain/audit/speed'
 import { isRuleId, RULES, SEVERITIES, type RuleId, type Severity } from '~/domain/audit/rules'
 import { logger } from '~/lib/logger'
 import { AUDIT_QUEUE } from '~/queue/audit'
@@ -81,6 +82,14 @@ export interface AuditPageView {
   findings: number
 }
 
+export interface SpeedRow {
+  url: string
+  strategy: Strategy
+  lab: LabData | null
+  field: FieldData | null
+  error: string | null
+}
+
 export interface SiteAuditView {
   /** Auditoría en cola o en curso, si hay. */
   pending: AuditRunView | null
@@ -91,6 +100,8 @@ export interface SiteAuditView {
   /** Acceso de cada bot a las rutas clave (null en auditorías anteriores a T8.4). */
   robots: RobotsOutcome | null
   keyPaths: string[]
+  /** PageSpeed de las rutas clave en la última auditoría terminada. */
+  speed: SpeedRow[]
   capped: boolean
   groups: FindingGroup[]
   pages: AuditPageView[]
@@ -120,6 +131,7 @@ export async function getSiteAudit(
 
   const groups: FindingGroup[] = []
   const pages: AuditPageView[] = []
+  const speed: SpeedRow[] = []
   if (latest?.status === 'done') {
     const findings = await db
       .select()
@@ -156,6 +168,23 @@ export async function getSiteAudit(
       ),
     )
 
+    const speedRows = await db
+      .select()
+      .from(psiResults)
+      .where(eq(psiResults.auditId, latest.id))
+      .orderBy(asc(psiResults.id))
+    speed.push(
+      ...speedRows
+        .map((row) => ({
+          url: row.url,
+          strategy: row.strategy,
+          lab: row.lab,
+          field: row.field,
+          error: row.error,
+        }))
+        .sort((a, b) => a.url.localeCompare(b.url) || b.strategy.localeCompare(a.strategy)),
+    )
+
     const pageRows = await db
       .select()
       .from(auditPages)
@@ -187,6 +216,7 @@ export async function getSiteAudit(
     sitemaps: latest?.summary?.sitemaps ?? [],
     robots: latest?.summary?.robots ?? null,
     keyPaths: site.keyPaths,
+    speed,
     sitemapSource: latest?.summary?.sitemapSource ?? null,
     capped: latest?.summary?.capped ?? false,
     groups,
@@ -226,21 +256,36 @@ export async function requestAudit(
   const availableAt = await manualAvailableAt(siteId)
   if (availableAt) return { ok: false, reason: 'cooldown', availableAt }
 
-  const id = randomUUID()
-  try {
-    await db.insert(audits).values({ id, siteId, trigger: 'manual', requestedBy: userId })
-  } catch (error) {
-    // Índice parcial: ya hay una auditoría en cola o en curso para el sitio.
-    if (isUniqueViolation(error)) return { ok: false, reason: 'pending' }
-    throw error
+  // Una programada que espera su ventana nocturna se adelanta: pasa a manual y corre ya
+  // (el job diferido la encontrará terminada y no hará nada).
+  const [promoted] = await db
+    .update(audits)
+    .set({ trigger: 'manual', requestedBy: userId, createdAt: new Date() })
+    .where(
+      and(eq(audits.siteId, siteId), eq(audits.status, 'queued'), eq(audits.trigger, 'scheduled')),
+    )
+    .returning({ id: audits.id })
+
+  const id = promoted?.id ?? randomUUID()
+  if (!promoted) {
+    try {
+      await db.insert(audits).values({ id, siteId, trigger: 'manual', requestedBy: userId })
+    } catch (error) {
+      // Índice parcial: ya hay una auditoría en curso (o manual en cola) para el sitio.
+      if (isUniqueViolation(error)) return { ok: false, reason: 'pending' }
+      throw error
+    }
   }
   try {
     const boss = await producer()
     await boss.send(AUDIT_QUEUE.name, { auditId: id })
   } catch (error) {
-    await db.delete(audits).where(eq(audits.id, id))
+    if (!promoted) await db.delete(audits).where(eq(audits.id, id))
     throw error
   }
-  log.info({ organizationId, siteId, auditId: id, userId }, 'auditoría manual encolada')
+  log.info(
+    { organizationId, siteId, auditId: id, userId, promoted: Boolean(promoted) },
+    'auditoría manual encolada',
+  )
   return { ok: true, auditId: id }
 }

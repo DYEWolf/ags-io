@@ -6,7 +6,7 @@
 // este proceso, útil para depurar el auditor sin reconstruir la imagen del worker.
 import { randomUUID } from 'node:crypto'
 import { parseArgs } from 'node:util'
-import { eq, or } from 'drizzle-orm'
+import { and, eq, or } from 'drizzle-orm'
 import { PgBoss } from 'pg-boss'
 import { runAudit } from '~/audit/run'
 import { db, pool } from '~/db/client'
@@ -38,9 +38,18 @@ try {
   const site = matches[0]
   if (!site) throw new Error('inalcanzable')
 
-  const auditId = randomUUID()
+  // Igual que en la app: una programada que espera su ventana se adelanta.
+  const [promoted] = await db
+    .update(audits)
+    .set({ trigger: 'manual', createdAt: new Date() })
+    .where(
+      and(eq(audits.siteId, site.id), eq(audits.status, 'queued'), eq(audits.trigger, 'scheduled')),
+    )
+    .returning({ id: audits.id })
+  const auditId = promoted?.id ?? randomUUID()
   try {
-    await db.insert(audits).values({ id: auditId, siteId: site.id, trigger: 'manual' })
+    if (!promoted)
+      await db.insert(audits).values({ id: auditId, siteId: site.id, trigger: 'manual' })
   } catch (error) {
     if (isUniqueViolation(error))
       throw new Error(`${site.domain} ya tiene una auditoría en cola o en curso`, { cause: error })
