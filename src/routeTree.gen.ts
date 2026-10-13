@@ -35,7 +35,11 @@ import { Route as AppStaffOrganizacionesRouteImport } from './routes/_app/staff/
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppSitiosSiteIdIndexRouteImport } from './routes/_app/sitios/$siteId/index'
 import { Route as AppSitiosSiteIdAjustesRouteImport } from './routes/_app/sitios/$siteId/ajustes'
+import { Route as AppSitiosSiteIdBusquedaRouteRouteImport } from './routes/_app/sitios/$siteId/busqueda/route'
 import { Route as AppSitiosSiteIdGeoRouteRouteImport } from './routes/_app/sitios/$siteId/geo/route'
+import { Route as AppSitiosSiteIdBusquedaIndexRouteImport } from './routes/_app/sitios/$siteId/busqueda/index'
+import { Route as AppSitiosSiteIdBusquedaBingRouteImport } from './routes/_app/sitios/$siteId/busqueda/bing'
+import { Route as AppSitiosSiteIdBusquedaIndexacionRouteImport } from './routes/_app/sitios/$siteId/busqueda/indexacion'
 import { Route as AppSitiosSiteIdGeoIndexRouteImport } from './routes/_app/sitios/$siteId/geo/index'
 import { Route as AppSitiosSiteIdGeoMarcaRouteImport } from './routes/_app/sitios/$siteId/geo/marca'
 import { Route as AppSitiosSiteIdGeoPromptsRouteImport } from './routes/_app/sitios/$siteId/geo/prompts'
@@ -171,11 +175,35 @@ const AppSitiosSiteIdAjustesRoute = AppSitiosSiteIdAjustesRouteImport.update({
   path: '/ajustes',
   getParentRoute: () => AppSitiosSiteIdRouteRoute,
 } as any)
+const AppSitiosSiteIdBusquedaRouteRoute =
+  AppSitiosSiteIdBusquedaRouteRouteImport.update({
+    id: '/busqueda',
+    path: '/busqueda',
+    getParentRoute: () => AppSitiosSiteIdRouteRoute,
+  } as any)
 const AppSitiosSiteIdGeoRouteRoute = AppSitiosSiteIdGeoRouteRouteImport.update({
   id: '/geo',
   path: '/geo',
   getParentRoute: () => AppSitiosSiteIdRouteRoute,
 } as any)
+const AppSitiosSiteIdBusquedaIndexRoute =
+  AppSitiosSiteIdBusquedaIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppSitiosSiteIdBusquedaRouteRoute,
+  } as any)
+const AppSitiosSiteIdBusquedaBingRoute =
+  AppSitiosSiteIdBusquedaBingRouteImport.update({
+    id: '/bing',
+    path: '/bing',
+    getParentRoute: () => AppSitiosSiteIdBusquedaRouteRoute,
+  } as any)
+const AppSitiosSiteIdBusquedaIndexacionRoute =
+  AppSitiosSiteIdBusquedaIndexacionRouteImport.update({
+    id: '/indexacion',
+    path: '/indexacion',
+    getParentRoute: () => AppSitiosSiteIdBusquedaRouteRoute,
+  } as any)
 const AppSitiosSiteIdGeoIndexRoute = AppSitiosSiteIdGeoIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -234,11 +262,15 @@ export interface FileRoutesByFullPath {
   '/cuenta/': typeof AppCuentaIndexRoute
   '/sitios/': typeof AppSitiosIndexRoute
   '/staff/': typeof AppStaffIndexRoute
+  '/sitios/$siteId/busqueda': typeof AppSitiosSiteIdBusquedaRouteRouteWithChildren
   '/sitios/$siteId/geo': typeof AppSitiosSiteIdGeoRouteRouteWithChildren
   '/sitios/$siteId/ajustes': typeof AppSitiosSiteIdAjustesRoute
   '/sitios/$siteId/': typeof AppSitiosSiteIdIndexRoute
+  '/sitios/$siteId/busqueda/bing': typeof AppSitiosSiteIdBusquedaBingRoute
+  '/sitios/$siteId/busqueda/indexacion': typeof AppSitiosSiteIdBusquedaIndexacionRoute
   '/sitios/$siteId/geo/marca': typeof AppSitiosSiteIdGeoMarcaRoute
   '/sitios/$siteId/geo/prompts': typeof AppSitiosSiteIdGeoPromptsRoute
+  '/sitios/$siteId/busqueda/': typeof AppSitiosSiteIdBusquedaIndexRoute
   '/sitios/$siteId/geo/': typeof AppSitiosSiteIdGeoIndexRoute
   '/sitios/$siteId/geo/corridas/$runId': typeof AppSitiosSiteIdGeoCorridasRunIdRoute
   '/sitios/$siteId/geo/corridas/nueva': typeof AppSitiosSiteIdGeoCorridasNuevaRoute
@@ -266,8 +298,11 @@ export interface FileRoutesByTo {
   '/staff': typeof AppStaffIndexRoute
   '/sitios/$siteId/ajustes': typeof AppSitiosSiteIdAjustesRoute
   '/sitios/$siteId': typeof AppSitiosSiteIdIndexRoute
+  '/sitios/$siteId/busqueda/bing': typeof AppSitiosSiteIdBusquedaBingRoute
+  '/sitios/$siteId/busqueda/indexacion': typeof AppSitiosSiteIdBusquedaIndexacionRoute
   '/sitios/$siteId/geo/marca': typeof AppSitiosSiteIdGeoMarcaRoute
   '/sitios/$siteId/geo/prompts': typeof AppSitiosSiteIdGeoPromptsRoute
+  '/sitios/$siteId/busqueda': typeof AppSitiosSiteIdBusquedaIndexRoute
   '/sitios/$siteId/geo': typeof AppSitiosSiteIdGeoIndexRoute
   '/sitios/$siteId/geo/corridas/$runId': typeof AppSitiosSiteIdGeoCorridasRunIdRoute
   '/sitios/$siteId/geo/corridas/nueva': typeof AppSitiosSiteIdGeoCorridasNuevaRoute
@@ -299,11 +334,15 @@ export interface FileRoutesById {
   '/_app/cuenta/': typeof AppCuentaIndexRoute
   '/_app/sitios/': typeof AppSitiosIndexRoute
   '/_app/staff/': typeof AppStaffIndexRoute
+  '/_app/sitios/$siteId/busqueda': typeof AppSitiosSiteIdBusquedaRouteRouteWithChildren
   '/_app/sitios/$siteId/geo': typeof AppSitiosSiteIdGeoRouteRouteWithChildren
   '/_app/sitios/$siteId/ajustes': typeof AppSitiosSiteIdAjustesRoute
   '/_app/sitios/$siteId/': typeof AppSitiosSiteIdIndexRoute
+  '/_app/sitios/$siteId/busqueda/bing': typeof AppSitiosSiteIdBusquedaBingRoute
+  '/_app/sitios/$siteId/busqueda/indexacion': typeof AppSitiosSiteIdBusquedaIndexacionRoute
   '/_app/sitios/$siteId/geo/marca': typeof AppSitiosSiteIdGeoMarcaRoute
   '/_app/sitios/$siteId/geo/prompts': typeof AppSitiosSiteIdGeoPromptsRoute
+  '/_app/sitios/$siteId/busqueda/': typeof AppSitiosSiteIdBusquedaIndexRoute
   '/_app/sitios/$siteId/geo/': typeof AppSitiosSiteIdGeoIndexRoute
   '/_app/sitios/$siteId/geo/corridas/$runId': typeof AppSitiosSiteIdGeoCorridasRunIdRoute
   '/_app/sitios/$siteId/geo/corridas/nueva': typeof AppSitiosSiteIdGeoCorridasNuevaRoute
@@ -334,11 +373,15 @@ export interface FileRouteTypes {
     | '/cuenta/'
     | '/sitios/'
     | '/staff/'
+    | '/sitios/$siteId/busqueda'
     | '/sitios/$siteId/geo'
     | '/sitios/$siteId/ajustes'
     | '/sitios/$siteId/'
+    | '/sitios/$siteId/busqueda/bing'
+    | '/sitios/$siteId/busqueda/indexacion'
     | '/sitios/$siteId/geo/marca'
     | '/sitios/$siteId/geo/prompts'
+    | '/sitios/$siteId/busqueda/'
     | '/sitios/$siteId/geo/'
     | '/sitios/$siteId/geo/corridas/$runId'
     | '/sitios/$siteId/geo/corridas/nueva'
@@ -366,8 +409,11 @@ export interface FileRouteTypes {
     | '/staff'
     | '/sitios/$siteId/ajustes'
     | '/sitios/$siteId'
+    | '/sitios/$siteId/busqueda/bing'
+    | '/sitios/$siteId/busqueda/indexacion'
     | '/sitios/$siteId/geo/marca'
     | '/sitios/$siteId/geo/prompts'
+    | '/sitios/$siteId/busqueda'
     | '/sitios/$siteId/geo'
     | '/sitios/$siteId/geo/corridas/$runId'
     | '/sitios/$siteId/geo/corridas/nueva'
@@ -398,11 +444,15 @@ export interface FileRouteTypes {
     | '/_app/cuenta/'
     | '/_app/sitios/'
     | '/_app/staff/'
+    | '/_app/sitios/$siteId/busqueda'
     | '/_app/sitios/$siteId/geo'
     | '/_app/sitios/$siteId/ajustes'
     | '/_app/sitios/$siteId/'
+    | '/_app/sitios/$siteId/busqueda/bing'
+    | '/_app/sitios/$siteId/busqueda/indexacion'
     | '/_app/sitios/$siteId/geo/marca'
     | '/_app/sitios/$siteId/geo/prompts'
+    | '/_app/sitios/$siteId/busqueda/'
     | '/_app/sitios/$siteId/geo/'
     | '/_app/sitios/$siteId/geo/corridas/$runId'
     | '/_app/sitios/$siteId/geo/corridas/nueva'
@@ -601,12 +651,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSitiosSiteIdAjustesRouteImport
       parentRoute: typeof AppSitiosSiteIdRouteRoute
     }
+    '/_app/sitios/$siteId/busqueda': {
+      id: '/_app/sitios/$siteId/busqueda'
+      path: '/busqueda'
+      fullPath: '/sitios/$siteId/busqueda'
+      preLoaderRoute: typeof AppSitiosSiteIdBusquedaRouteRouteImport
+      parentRoute: typeof AppSitiosSiteIdRouteRoute
+    }
     '/_app/sitios/$siteId/geo': {
       id: '/_app/sitios/$siteId/geo'
       path: '/geo'
       fullPath: '/sitios/$siteId/geo'
       preLoaderRoute: typeof AppSitiosSiteIdGeoRouteRouteImport
       parentRoute: typeof AppSitiosSiteIdRouteRoute
+    }
+    '/_app/sitios/$siteId/busqueda/': {
+      id: '/_app/sitios/$siteId/busqueda/'
+      path: '/'
+      fullPath: '/sitios/$siteId/busqueda/'
+      preLoaderRoute: typeof AppSitiosSiteIdBusquedaIndexRouteImport
+      parentRoute: typeof AppSitiosSiteIdBusquedaRouteRoute
+    }
+    '/_app/sitios/$siteId/busqueda/bing': {
+      id: '/_app/sitios/$siteId/busqueda/bing'
+      path: '/bing'
+      fullPath: '/sitios/$siteId/busqueda/bing'
+      preLoaderRoute: typeof AppSitiosSiteIdBusquedaBingRouteImport
+      parentRoute: typeof AppSitiosSiteIdBusquedaRouteRoute
+    }
+    '/_app/sitios/$siteId/busqueda/indexacion': {
+      id: '/_app/sitios/$siteId/busqueda/indexacion'
+      path: '/indexacion'
+      fullPath: '/sitios/$siteId/busqueda/indexacion'
+      preLoaderRoute: typeof AppSitiosSiteIdBusquedaIndexacionRouteImport
+      parentRoute: typeof AppSitiosSiteIdBusquedaRouteRoute
     }
     '/_app/sitios/$siteId/geo/': {
       id: '/_app/sitios/$siteId/geo/'
@@ -685,6 +763,25 @@ const AppStaffRouteRouteWithChildren = AppStaffRouteRoute._addFileChildren(
   AppStaffRouteRouteChildren,
 )
 
+interface AppSitiosSiteIdBusquedaRouteRouteChildren {
+  AppSitiosSiteIdBusquedaBingRoute: typeof AppSitiosSiteIdBusquedaBingRoute
+  AppSitiosSiteIdBusquedaIndexacionRoute: typeof AppSitiosSiteIdBusquedaIndexacionRoute
+  AppSitiosSiteIdBusquedaIndexRoute: typeof AppSitiosSiteIdBusquedaIndexRoute
+}
+
+const AppSitiosSiteIdBusquedaRouteRouteChildren: AppSitiosSiteIdBusquedaRouteRouteChildren =
+  {
+    AppSitiosSiteIdBusquedaBingRoute: AppSitiosSiteIdBusquedaBingRoute,
+    AppSitiosSiteIdBusquedaIndexacionRoute:
+      AppSitiosSiteIdBusquedaIndexacionRoute,
+    AppSitiosSiteIdBusquedaIndexRoute: AppSitiosSiteIdBusquedaIndexRoute,
+  }
+
+const AppSitiosSiteIdBusquedaRouteRouteWithChildren =
+  AppSitiosSiteIdBusquedaRouteRoute._addFileChildren(
+    AppSitiosSiteIdBusquedaRouteRouteChildren,
+  )
+
 interface AppSitiosSiteIdGeoRouteRouteChildren {
   AppSitiosSiteIdGeoMarcaRoute: typeof AppSitiosSiteIdGeoMarcaRoute
   AppSitiosSiteIdGeoPromptsRoute: typeof AppSitiosSiteIdGeoPromptsRoute
@@ -710,12 +807,15 @@ const AppSitiosSiteIdGeoRouteRouteWithChildren =
   )
 
 interface AppSitiosSiteIdRouteRouteChildren {
+  AppSitiosSiteIdBusquedaRouteRoute: typeof AppSitiosSiteIdBusquedaRouteRouteWithChildren
   AppSitiosSiteIdGeoRouteRoute: typeof AppSitiosSiteIdGeoRouteRouteWithChildren
   AppSitiosSiteIdAjustesRoute: typeof AppSitiosSiteIdAjustesRoute
   AppSitiosSiteIdIndexRoute: typeof AppSitiosSiteIdIndexRoute
 }
 
 const AppSitiosSiteIdRouteRouteChildren: AppSitiosSiteIdRouteRouteChildren = {
+  AppSitiosSiteIdBusquedaRouteRoute:
+    AppSitiosSiteIdBusquedaRouteRouteWithChildren,
   AppSitiosSiteIdGeoRouteRoute: AppSitiosSiteIdGeoRouteRouteWithChildren,
   AppSitiosSiteIdAjustesRoute: AppSitiosSiteIdAjustesRoute,
   AppSitiosSiteIdIndexRoute: AppSitiosSiteIdIndexRoute,

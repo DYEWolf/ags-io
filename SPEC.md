@@ -142,6 +142,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 **R-012 Estado de indexación**
 - EL SISTEMA DEBE verificar semanalmente, con la URL Inspection API de GSC, el estado de indexación de las URLs del sitemap de cada sitio, respetando la cuota de la API.
 - *Diseño (M6)*: `inspection.schedule` (martes 11:00 UTC) encola `inspection.run` por sitio importable en GSC (activo, verificado, con propiedad; política `stately` por sitio, también desde «Revisar indexación ahora» en Ajustes). Las URLs salen de los sitemaps (`src/audit/sitemap.ts`, con protección SSRF; sin sitemap, la portada), solo las de la propiedad (`sc-domain:` = dominio y subdominios; prefijo = URLs que empiezan por él), hasta 500, y se omiten las revisadas en los últimos 6 días, así que reanudar no gasta cuota. Una llamada por segundo (límite 600/min). **Cuota**: 2 000 por propiedad y día del Pacífico, reservada antes de cada llamada en `inspection_quota` con un upsert condicional (dos sitios pueden compartir propiedad); agotada, el job se encola para las 00:05 del Pacífico siguiente. La API responde 403 tanto sin acceso como para una URL que no considera de la propiedad: ante un 403 por URL se vuelve a consultar la propiedad y, si hay acceso, solo falla esa URL. `index_status` guarda una fila por revisión (veredicto, cobertura en español, indexación, robots, fetch, último rastreo, canónicas, rastreador) durante 12 semanas. Cambiar la propiedad borra el historial.
+- *Diseño (M6, vistas)*: pestaña **Búsqueda** del sitio con tres subpestañas (`src/routes/_app/sitios/$siteId/busqueda`, lógica pura en `domain/search/metrics.ts`). **Google**: periodo de 28 días (por defecto), 3, 6 o 16 meses que termina en el día más reciente importado (hora del Pacífico, como GSC), filtros de dispositivo y país (en la URL); KPIs de clics, impresiones, CTR y posición media (ponderada por impresiones) desde `gsc_totals_daily`, con la variación contra el periodo anterior de la misma duración; tendencias diarias en SVG propio (los días sin filas valen 0; sin impresiones no hay CTR ni posición; la posición se dibuja invertida) y las 25 consultas y páginas principales desde `gsc_daily`, avisando de que Google omite las anonimizadas. **Bing**: mismo periodo, KPIs y tendencia desde `bing_totals_daily` (sin posición) y consultas y páginas principales. **Indexación**: última revisión de cada URL, conteo por veredicto y tabla con lo que necesita atención primero (cobertura, último rastreo y canónica elegida por Google si difiere de la declarada). Cada vista muestra el estado de su fuente y, si no importa (pausado, sin verificar, sin propiedad), el motivo con enlace a Ajustes.
 
 ### 4.3 Bots y logs
 
@@ -295,7 +296,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 |---|---|---|
 | Lenguaje | TypeScript estricto | Node 22 LTS; TypeScript 6.0.x (typescript-eslint aún no soporta TS 7) |
 | Web | TanStack Start (React) | server functions para acciones del dashboard |
-| UI | Tailwind + componentes propios/shadcn | sin librería de gráficas: barras CSS y SVG propios (tendencia de auditoría, métricas GEO) |
+| UI | Tailwind + componentes propios/shadcn | sin librería de gráficas: barras CSS y SVG propios (tendencia de auditoría, métricas GEO, tendencias de búsqueda) |
 | DB | PostgreSQL 16 local | JSONB para respuestas crudas |
 | ORM | Drizzle 0.45 (estable) + drizzle-kit | migraciones versionadas, aplicadas en el arranque del contenedor `web` con advisory lock |
 | Servidor Node | srvx + entrypoints propios empaquetados con esbuild | `dist/node/web.mjs` (migra, sirve estáticos, delega en Start) y `dist/node/worker.mjs`; sin Nitro (beta) |
@@ -511,7 +512,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [x] T6.2 Cliente Bing + job diario.
 - [x] T6.3 Resolver Q1/Q2 e importar datos de IA si existen (no existen por API: ver §13).
 - [x] T6.4 Job semanal de URL Inspection con respeto de cuota.
-- [ ] T6.5 Vistas del dashboard: tendencias por sitio.
+- [x] T6.5 Vistas del dashboard: tendencias por sitio.
 
 ### M7 — Bots (R-020–R-023)
 - [ ] T7.1 Montaje ro de logs + lector incremental con cursor.

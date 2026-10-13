@@ -51,6 +51,14 @@ function SiteLayout() {
           Auditoría
         </Link>
         <Link
+          to="/sitios/$siteId/busqueda"
+          params={{ siteId: site.id }}
+          className={tabClass}
+          activeProps={{ className: tabActive }}
+        >
+          Búsqueda
+        </Link>
+        <Link
           to="/sitios/$siteId/geo"
           params={{ siteId: site.id }}
           className={tabClass}

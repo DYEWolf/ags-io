@@ -41,7 +41,7 @@ Cuando el usuario pida empezar un módulo:
 
 ## Estado
 
-_Actualizado tras aprobar M10 (2026-10-12)._
+_Actualizado al cerrar M6 (2026-10-12), pendiente del e2e del usuario._
 
 | Módulo | Estado | Notas |
 |---|---|---|
@@ -51,37 +51,40 @@ _Actualizado tras aprobar M10 (2026-10-12)._
 | M3 Sitios | ✅ Aprobado | |
 | M4 Gasto y operación | ✅ Aprobado | |
 | M5 Deploy y respaldos | ⏸ Bloqueado | Falta el dominio (Q6) y acceso SSH a la VPS |
+| M6 Colectores | 🧪 Listo para e2e | T6.0 (verificación de propiedad) añadida al plan |
 | M8 Auditor | ✅ Aprobado | Adelantado a M5–M7 porque no depende del dominio |
 | M10 GEO manual | ✅ Aprobado | |
-| M6, M7, M9, M11, M12 | Pendientes | |
+| M7, M9, M11, M12 | Pendientes | |
 
-**Siguiente recomendado**: **M6 Colectores** ("empieza módulo M6"): sus accesos ya están listos (ver abajo) y es parte del hito piloto (M0–M8). Después M7 (logs de muestra) y M11 (requiere decidir Q3 y una API key). M5 sigue bloqueado por el dominio.
+**Siguiente recomendado** (tras aprobar M6): **M7 Bots** (se desarrolla con logs de muestra; cierra el hito piloto M0–M8 salvo M5). Después M11 (requiere decidir Q3 y una API key). M5 sigue bloqueado por el dominio.
 
-Hallazgos de M10 útiles para quien siga:
+Hallazgos de M6 útiles para quien siga:
 
-- Métricas GEO (R-054, `domain/geo/metrics.ts`) se calculan al vuelo sobre `llm_runs`; si M11 multiplica el volumen, valorar agregados.
-- Un script `tsx` que llame a funciones de `src/server/geo.ts` que encolan (`geo.extract`) no termina solo: la conexión de pg-boss queda abierta; acaba con `process.exit(0)`.
-- En Chrome, `form_input` sobre un checkbox de React no dispara `onChange`; usa un clic.
+- **Sin verificar la propiedad del dominio (T6.0) no se importa nada** de GSC ni Bing: la service account y la key son de la plataforma. Soporte: `pnpm site:verify <dominio|id> [--staff|--clear]`.
+- chrisrm.dev aún no tiene datos en GSC ni en Bing (propiedad nueva) y **no tiene robots.txt ni sitemap** (404): URL Inspection solo revisa la portada. La inserción de filas reales y la granularidad de fechas de Bing quedan por confirmar cuando haya datos.
+- URL Inspection responde 403 tanto sin acceso como para una URL que no considera de la propiedad; `src/server/inspection.ts` reconsulta la propiedad para distinguirlo.
+- Bing acepta la URL del sitio con o sin `www.` y con http o https.
+- La carga inicial de GSC (16 meses) tarda ~5 min por sitio (21 pasadas de ~12 s).
+- Hallazgos anteriores: un script `tsx` que encola por pg-boss no termina solo (`process.exit(0)`); en Chrome, `form_input` sobre un checkbox de React no dispara `onChange` (usa un clic); las métricas GEO se calculan al vuelo sobre `llm_runs`.
 
-Después de M10, qué necesita cada pendiente:
+Qué necesita cada pendiente:
 
-- **M6 Colectores**: accesos listos (ver "Accesos para M6"); falta resolver Q1/Q2 (¿datos de IA por API?).
 - **M7 Bots**: logs de Caddy de la VPS para la verificación real (se puede desarrollar con logs de muestra).
 - **M9 Rank tracking**: API key de Serper; resolver Q4.
 - **M11 GEO automático**: API key del motor elegido en Q3; requiere M10.
-- **M12 Reportes y alertas**: bot de Telegram (token + chat id). Las alertas ya se registran en `alerts` (`spend_cap`, `jsonld_broken`).
+- **M12 Reportes y alertas**: bot de Telegram (token + chat id). Las alertas ya se registran en `alerts` (`spend_cap`, `jsonld_broken`, `site_unverified`).
 
-**Credenciales ya configuradas** (en `.env`, nunca en el repo): `PAGESPEED_API_KEY`, `BING_WEBMASTER_API_KEY`, `GOOGLE_SERVICE_ACCOUNT_KEY` (base64 de `~/.config/ags-io/google-service-account.json`).
+**Credenciales ya configuradas** (en `.env`, nunca en el repo): `PAGESPEED_API_KEY`, `BING_WEBMASTER_API_KEY`, `GOOGLE_SERVICE_ACCOUNT_KEY` (base64 de `~/.config/ags-io/google-service-account.json`, que sigue fuera del repo). Falta `BING_ACCOUNT_EMAIL` (el email de la cuenta Microsoft de Bing Webmaster; sin él Ajustes pide escribir a soporte).
 
-**Accesos para M6 (listos desde 2026-10-12)**:
+**Accesos de los colectores**:
 
-- Search Console: la propiedad de dominio `sc-domain:chrisrm.dev` está verificada por DNS en Porkbun (el TXT no se borra). La service account `ags-io-gsc@ags-io.iam.gserviceaccount.com` (proyecto `ags-io`, Search Console API habilitada) tiene permiso Restringido. Su key JSON está **fuera del repo** en `~/.config/ags-io/google-service-account.json` (600); en M6 se decide cómo montarla en los contenedores. La llamada real con la service account aún no se probó: hazlo al empezar M6. La propiedad es nueva, así que tendrá pocos datos los primeros días.
-- Bing Webmaster Tools: chrisrm.dev importado desde Search Console y verificado; `GetUserSites` con la key responde 200 con el sitio `https://chrisrm.dev/` (ese es el valor del campo "sitio Bing").
+- Search Console: `sc-domain:chrisrm.dev` verificada por DNS en Porkbun (el TXT no se borra); la service account `ags-io-gsc@ags-io.iam.gserviceaccount.com` (proyecto `ags-io`) tiene permiso Restringido y funciona (searchanalytics y URL Inspection probados).
+- Bing Webmaster Tools: `https://chrisrm.dev/` verificado en la cuenta de la key.
 - El DNS de chrisrm.dev está en Porkbun (nameservers `*.ns.porkbun.com`), no en Cloudflare.
 
 **Sitio piloto**: chrisrm.dev (cuenta test@test.com). Sitios públicos útiles para probar: vite.dev (SSR, 57 URLs), excalidraw.com (contenido solo con JS), levainbakery.com (Shopify, pesado).
 
-**Pendientes y decisiones abiertas**: Q1–Q4 y Q6 en SPEC §13. Medir la memoria real del worker en la VPS en T5.4 (en Docker local el pico fue ~800 MiB de 1 GiB con un sitio Shopify grande).
+**Pendientes y decisiones abiertas**: Q3, Q4 y Q6 en SPEC §13 (Q1/Q2 resueltas en M6: no hay API de datos de IA). Medir la memoria real del worker en la VPS en T5.4 (en Docker local el pico fue ~800 MiB de 1 GiB con un sitio Shopify grande).
 
 ## Al cerrar un módulo (además de `/ship-task`)
 
