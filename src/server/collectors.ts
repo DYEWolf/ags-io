@@ -8,6 +8,7 @@ import {
   collectorState,
   gscDaily,
   gscTotalsDaily,
+  indexStatus,
   type CollectorSource,
   type CollectorStatus,
 } from '~/db/schema'
@@ -42,6 +43,7 @@ const GSC_SOURCES: CollectorSource[] = ['gsc', 'inspection']
 export async function purgeGscData(siteId: string, executor: Executor = db): Promise<void> {
   await executor.delete(gscDaily).where(eq(gscDaily.siteId, siteId))
   await executor.delete(gscTotalsDaily).where(eq(gscTotalsDaily.siteId, siteId))
+  await executor.delete(indexStatus).where(eq(indexStatus.siteId, siteId))
   await executor
     .delete(collectorState)
     .where(and(eq(collectorState.siteId, siteId), inArray(collectorState.source, GSC_SOURCES)))

@@ -11,6 +11,7 @@ import {
   text,
   timestamp,
 } from 'drizzle-orm/pg-core'
+import type { Verdict } from '~/domain/search/inspection'
 import { sites } from './sites'
 
 const tstz = (name: string) => timestamp(name, { withTimezone: true, mode: 'date' })
@@ -151,4 +152,43 @@ export const bingTotalsDaily = pgTable(
     impressions: integer('impressions').notNull(),
   },
   (table) => [primaryKey({ columns: [table.siteId, table.date] })],
+)
+
+/**
+ * Estado de indexación por URL (R-012), una fila por revisión con URL Inspection. Se conservan
+ * 12 semanas; la vista usa la última de cada URL. `coverage_state` viene en español (`es`).
+ */
+export const indexStatus = pgTable(
+  'index_status',
+  {
+    siteId: text('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    url: text('url').notNull(),
+    checkedAt: tstz('checked_at').notNull().defaultNow(),
+    verdict: text('verdict').$type<Verdict>().notNull(),
+    coverageState: text('coverage_state'),
+    indexingState: text('indexing_state'),
+    robotsTxtState: text('robots_txt_state'),
+    pageFetchState: text('page_fetch_state'),
+    lastCrawlTime: tstz('last_crawl_time'),
+    googleCanonical: text('google_canonical'),
+    userCanonical: text('user_canonical'),
+    crawledAs: text('crawled_as'),
+  },
+  (table) => [
+    primaryKey({ columns: [table.siteId, table.url, table.checkedAt] }),
+    index('index_status_site_checked_idx').on(table.siteId, table.checkedAt),
+  ],
+)
+
+/** Llamadas a URL Inspection por propiedad y día del Pacífico (cuota de 2 000, R-012). */
+export const inspectionQuota = pgTable(
+  'inspection_quota',
+  {
+    property: text('property').notNull(),
+    day: day('day').notNull(),
+    used: integer('used').notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.property, table.day] })],
 )

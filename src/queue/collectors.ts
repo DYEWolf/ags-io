@@ -19,6 +19,24 @@ export const BING_SYNC_QUEUE = {
   config: { expireInSeconds: 15 * 60 },
 } satisfies QueueDefinition
 
+/**
+ * Revisión semanal de indexación de un sitio (R-012). Puede tardar (una URL por segundo, hasta
+ * 500) y, si se agota la cuota de la propiedad, se vuelve a encolar para el día siguiente.
+ */
+export const INSPECTION_QUEUE = {
+  name: 'inspection.run',
+  policy: 'stately',
+  config: { expireInSeconds: 2 * 3_600 },
+} satisfies QueueDefinition
+
+export type SyncSource = 'gsc' | 'bing' | 'inspection'
+
+export const SYNC_QUEUES = {
+  gsc: GSC_SYNC_QUEUE,
+  bing: BING_SYNC_QUEUE,
+  inspection: INSPECTION_QUEUE,
+} satisfies Record<SyncSource, QueueDefinition>
+
 export const siteJobSchema = z.object({ siteId: z.string().min(1).max(64) })
 
 export type SiteJobData = z.infer<typeof siteJobSchema>

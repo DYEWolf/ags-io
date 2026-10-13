@@ -4,7 +4,7 @@ import { pgConnectionOptions } from '~/db/connection'
 import { logger } from '~/lib/logger'
 import { ensureQueue } from '~/queue'
 import { AUDIT_QUEUE } from '~/queue/audit'
-import { BING_SYNC_QUEUE, GSC_SYNC_QUEUE } from '~/queue/collectors'
+import { SYNC_QUEUES, type SyncSource } from '~/queue/collectors'
 import { EMAIL_QUEUE, emailJobSchema, type EmailJobData } from '~/queue/email'
 import { GEO_EXTRACT_QUEUE } from '~/queue/geo'
 
@@ -29,8 +29,7 @@ async function start(): Promise<PgBoss> {
   await ensureQueue(boss, EMAIL_QUEUE)
   await ensureQueue(boss, AUDIT_QUEUE)
   await ensureQueue(boss, GEO_EXTRACT_QUEUE)
-  await ensureQueue(boss, GSC_SYNC_QUEUE)
-  await ensureQueue(boss, BING_SYNC_QUEUE)
+  for (const queue of Object.values(SYNC_QUEUES)) await ensureQueue(boss, queue)
   return boss
 }
 
@@ -70,12 +69,9 @@ export async function enqueueGeoExtract(siteId: string): Promise<void> {
   log.info({ jobId: id, siteId, queued: id !== null }, 'reextracción de menciones pedida')
 }
 
-/** Importación de un colector de un sitio (R-010, R-011). `false` si ya había una en cola. */
-export async function enqueueCollectorSync(
-  source: 'gsc' | 'bing',
-  siteId: string,
-): Promise<boolean> {
-  const queue = source === 'gsc' ? GSC_SYNC_QUEUE : BING_SYNC_QUEUE
+/** Importación de un colector de un sitio (R-010–R-012). `false` si ya había una en cola. */
+export async function enqueueCollectorSync(source: SyncSource, siteId: string): Promise<boolean> {
+  const queue = SYNC_QUEUES[source]
   const boss = await producer()
   const id = await boss.send(queue.name, { siteId }, { singletonKey: siteId })
   log.info({ jobId: id, siteId, queue: queue.name, queued: id !== null }, 'importación pedida')

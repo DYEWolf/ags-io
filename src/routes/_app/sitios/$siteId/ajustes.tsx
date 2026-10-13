@@ -4,6 +4,11 @@ import { SiteForm } from '~/components/site-form'
 import { Alert, Badge, Button, Card, dateTimeFormat, formText } from '~/components/ui'
 import type { CollectorStatus } from '~/db/schema'
 import { BLOCKER_LABELS } from '~/domain/search/collectors'
+import {
+  INSPECTION_DAILY_QUOTA,
+  INSPECTION_RECHECK_DAYS,
+  MAX_INSPECTION_URLS,
+} from '~/domain/search/inspection'
 import { domainKey } from '~/domain/sites'
 import {
   MAX_VERIFICATION_FAILURES,
@@ -239,20 +244,28 @@ const dayFormat = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeZo
 const formatDay = (day: string) => dayFormat.format(new Date(`${day}T00:00:00Z`))
 
 /** Estado de un colector: propiedad, bloqueo, última importación y tramo de datos. */
-function CollectorStatusBlock({ collector }: { collector: CollectorView }) {
+function CollectorStatusBlock({
+  collector,
+  hideProperty = false,
+}: {
+  collector: CollectorView
+  hideProperty?: boolean
+}) {
   const { blocker } = collector
   // Un estado de otra propiedad (recién cambiada) no describe la actual.
   const state = collector.state?.property === collector.property ? collector.state : null
   return (
     <div className="flex flex-col gap-2 text-sm">
-      <p>
-        <span className="text-neutral-600">Propiedad: </span>
-        {collector.property ? (
-          <code className="break-all">{collector.property}</code>
-        ) : (
-          <span className="text-neutral-500">sin configurar</span>
-        )}
-      </p>
+      {hideProperty ? null : (
+        <p>
+          <span className="text-neutral-600">Propiedad: </span>
+          {collector.property ? (
+            <code className="break-all">{collector.property}</code>
+          ) : (
+            <span className="text-neutral-500">sin configurar</span>
+          )}
+        </p>
+      )}
       {blocker ? (
         <Alert tone="warning">{BLOCKER_LABELS[blocker]} No se importan datos.</Alert>
       ) : null}
@@ -289,7 +302,15 @@ function CollectorStatusBlock({ collector }: { collector: CollectorView }) {
   )
 }
 
-function SyncButton({ source, blocked }: { source: 'gsc' | 'bing'; blocked: boolean }) {
+function SyncButton({
+  source,
+  blocked,
+  label = 'Importar ahora',
+}: {
+  source: 'gsc' | 'bing' | 'inspection'
+  blocked: boolean
+  label?: string
+}) {
   const router = useRouter()
   const site = siteRoute.useLoaderData()
   const [pending, setPending] = useState(false)
@@ -325,7 +346,7 @@ function SyncButton({ source, blocked }: { source: 'gsc' | 'bing'; blocked: bool
           disabled={blocked}
           onClick={() => void sync()}
         >
-          Importar ahora
+          {label}
         </Button>
       </div>
     </>
@@ -364,6 +385,22 @@ function GscCard() {
 
         <CollectorStatusBlock collector={connections.gsc} />
         <SyncButton source="gsc" blocked={connections.gsc.blocker !== null} />
+
+        <div className="flex flex-col gap-2 border-t border-neutral-200 pt-4">
+          <p className="text-sm font-medium">Estado de indexación</p>
+          <p className="text-sm text-neutral-600">
+            Cada martes se revisa con URL Inspection si Google indexó cada URL del sitemap (hasta{' '}
+            {MAX_INSPECTION_URLS}). La cuota es de {INSPECTION_DAILY_QUOTA.toLocaleString('es-MX')}{' '}
+            revisiones por propiedad y día; si se agota, continúa al día siguiente. Las URLs
+            revisadas en los últimos {INSPECTION_RECHECK_DAYS} días no se repiten.
+          </p>
+          <CollectorStatusBlock collector={connections.inspection} hideProperty />
+          <SyncButton
+            source="inspection"
+            blocked={connections.inspection.blocker !== null}
+            label="Revisar indexación ahora"
+          />
+        </div>
       </div>
     </Card>
   )

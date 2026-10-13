@@ -9,6 +9,8 @@ import { geoExtractJob } from '~/worker/jobs/geo.extract'
 import { gscScheduleJob } from '~/worker/jobs/gsc.schedule'
 import { gscSyncJob } from '~/worker/jobs/gsc.sync'
 import { siteVerifyJob } from '~/worker/jobs/site.verify'
+import { inspectionRunJob } from '~/worker/jobs/inspection.run'
+import { inspectionScheduleJob } from '~/worker/jobs/inspection.schedule'
 import { heartbeatJob } from '~/worker/jobs/system.heartbeat'
 
 // Registro de jobs del worker: añadir aquí cada archivo nuevo de `jobs/`.
@@ -24,4 +26,6 @@ export const jobs: JobDefinition[] = [
   gscSyncJob,
   bingScheduleJob,
   bingSyncJob,
+  inspectionScheduleJob,
+  inspectionRunJob,
 ]

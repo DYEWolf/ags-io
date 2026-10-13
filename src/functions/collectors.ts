@@ -31,6 +31,7 @@ export interface SearchConnectionsView {
   bingAccountEmail: string | null
   gsc: CollectorView
   bing: CollectorView
+  inspection: CollectorView
 }
 
 const siteIdSchema = z.object({ siteId: z.string().min(1).max(64) })
@@ -74,6 +75,7 @@ export const getSearchConnections = createServerFn({ method: 'GET' })
       bingAccountEmail: env.BING_ACCOUNT_EMAIL ?? null,
       gsc: view('gsc', site.gscProperty),
       bing: view('bing', site.bingSite),
+      inspection: view('inspection', site.gscProperty),
     }
   })
 
@@ -82,11 +84,14 @@ export type RequestSyncResult = { ok: true; queued: boolean } | { ok: false; err
 /** "Importar ahora": encola la importación (si ya hay una en cola, no se duplica). */
 export const requestCollectorSync = createServerFn({ method: 'POST' })
   .middleware([organizationMiddleware])
-  .validator(siteIdSchema.extend({ source: z.enum(['gsc', 'bing']) }))
+  .validator(siteIdSchema.extend({ source: z.enum(['gsc', 'bing', 'inspection']) }))
   .handler(async ({ context, data }): Promise<RequestSyncResult> => {
     assertCanManage(context.organizationRole)
     const site = await siteFor(context.organizationId, data.siteId)
-    const blocker = collectorBlocker(site, data.source === 'gsc' ? site.gscProperty : site.bingSite)
+    const blocker = collectorBlocker(
+      site,
+      data.source === 'bing' ? site.bingSite : site.gscProperty,
+    )
     if (blocker) return { ok: false, error: BLOCKER_LABELS[blocker] }
     const { enqueueCollectorSync } = await import('~/server/queue')
     return { ok: true, queued: await enqueueCollectorSync(data.source, site.id) }

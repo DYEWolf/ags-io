@@ -2,6 +2,7 @@
 // gasto (R-003). Cuotas: 1 200 consultas/min por sitio y por usuario; ver `searchanalytics.query`.
 import { z } from 'zod'
 import { GSC_PAGE_SIZE } from '~/domain/search/gsc'
+import { VERDICTS, type Verdict } from '~/domain/search/inspection'
 import { GoogleAuthError, googleAccessToken, invalidateGoogleToken } from '~/providers/google-auth'
 
 const API = 'https://www.googleapis.com/webmasters/v3'
@@ -126,4 +127,59 @@ export async function querySearchAnalytics(
     if (data.rows.length < rowLimit) break
   }
   return rows
+}
+
+const INSPECT_URL = 'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect'
+
+const inspectionSchema = z.object({
+  inspectionResult: z.object({
+    indexStatusResult: z
+      .object({
+        verdict: z.enum(VERDICTS).catch('VERDICT_UNSPECIFIED'),
+        coverageState: z.string().optional(),
+        indexingState: z.string().optional(),
+        robotsTxtState: z.string().optional(),
+        pageFetchState: z.string().optional(),
+        lastCrawlTime: z.string().optional(),
+        googleCanonical: z.string().optional(),
+        userCanonical: z.string().optional(),
+        crawledAs: z.string().optional(),
+      })
+      .optional(),
+  }),
+})
+
+export interface UrlInspection {
+  verdict: Verdict
+  coverageState: string | null
+  indexingState: string | null
+  robotsTxtState: string | null
+  pageFetchState: string | null
+  lastCrawlTime: Date | null
+  googleCanonical: string | null
+  userCanonical: string | null
+  crawledAs: string | null
+}
+
+/** Estado de indexación de una URL de la propiedad (R-012). Cuenta contra la cuota diaria. */
+export async function inspectUrl(property: string, url: string): Promise<UrlInspection> {
+  const data = inspectionSchema.parse(
+    await googleApiRequest(INSPECT_URL, {
+      method: 'POST',
+      body: { inspectionUrl: url, siteUrl: property, languageCode: 'es' },
+    }),
+  )
+  const result = data.inspectionResult.indexStatusResult
+  const crawl = result?.lastCrawlTime ? new Date(result.lastCrawlTime) : null
+  return {
+    verdict: result?.verdict ?? 'VERDICT_UNSPECIFIED',
+    coverageState: result?.coverageState ?? null,
+    indexingState: result?.indexingState ?? null,
+    robotsTxtState: result?.robotsTxtState ?? null,
+    pageFetchState: result?.pageFetchState ?? null,
+    lastCrawlTime: crawl && !Number.isNaN(crawl.getTime()) ? crawl : null,
+    googleCanonical: result?.googleCanonical ?? null,
+    userCanonical: result?.userCanonical ?? null,
+    crawledAs: result?.crawledAs ?? null,
+  }
 }

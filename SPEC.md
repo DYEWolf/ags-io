@@ -141,6 +141,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 
 **R-012 Estado de indexación**
 - EL SISTEMA DEBE verificar semanalmente, con la URL Inspection API de GSC, el estado de indexación de las URLs del sitemap de cada sitio, respetando la cuota de la API.
+- *Diseño (M6)*: `inspection.schedule` (martes 11:00 UTC) encola `inspection.run` por sitio importable en GSC (activo, verificado, con propiedad; política `stately` por sitio, también desde «Revisar indexación ahora» en Ajustes). Las URLs salen de los sitemaps (`src/audit/sitemap.ts`, con protección SSRF; sin sitemap, la portada), solo las de la propiedad (`sc-domain:` = dominio y subdominios; prefijo = URLs que empiezan por él), hasta 500, y se omiten las revisadas en los últimos 6 días, así que reanudar no gasta cuota. Una llamada por segundo (límite 600/min). **Cuota**: 2 000 por propiedad y día del Pacífico, reservada antes de cada llamada en `inspection_quota` con un upsert condicional (dos sitios pueden compartir propiedad); agotada, el job se encola para las 00:05 del Pacífico siguiente. La API responde 403 tanto sin acceso como para una URL que no considera de la propiedad: ante un 403 por URL se vuelve a consultar la propiedad y, si hay acceso, solo falla esa URL. `index_status` guarda una fila por revisión (veredicto, cobertura en español, indexación, robots, fetch, último rastreo, canónicas, rastreador) durante 12 semanas. Cambiar la propiedad borra el historial.
 
 ### 4.3 Bots y logs
 
@@ -400,7 +401,11 @@ bing_daily     (site_id, date, query, clicks, impressions, avg_click_position,
 bing_page_daily (site_id, date, page, clicks, impressions, avg_click_position,
                 avg_impression_position)                -- pk (site_id, date, page)
 bing_totals_daily (site_id, date, clicks, impressions)  -- pk (site_id, date)
-index_status   (site_id, url, checked_at, verdict, coverage_state)
+index_status   (site_id, url, checked_at, verdict PASS|PARTIAL|FAIL|NEUTRAL|VERDICT_UNSPECIFIED,
+                coverage_state, indexing_state, robots_txt_state, page_fetch_state,
+                last_crawl_time, google_canonical, user_canonical, crawled_as)
+                -- pk (site_id, url, checked_at); 12 semanas
+inspection_quota (property, day, used)                   -- pk (property, day); día del Pacífico
 
 bot_hits       (id, ts, host, path, status, bytes, ua, ip, bot, verified)   -- 90 días
 bot_daily      (site_id, date, bot, verified, hits, errors_4xx, errors_5xx)
@@ -505,7 +510,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [x] T6.1 Service account + cliente GSC + job diario idempotente.
 - [x] T6.2 Cliente Bing + job diario.
 - [x] T6.3 Resolver Q1/Q2 e importar datos de IA si existen (no existen por API: ver §13).
-- [ ] T6.4 Job semanal de URL Inspection con respeto de cuota.
+- [x] T6.4 Job semanal de URL Inspection con respeto de cuota.
 - [ ] T6.5 Vistas del dashboard: tendencias por sitio.
 
 ### M7 — Bots (R-020–R-023)
