@@ -41,7 +41,7 @@ Cuando el usuario pida empezar un módulo:
 
 ## Estado
 
-_Actualizado al cerrar M6 (2026-10-12), pendiente del e2e del usuario._
+_Actualizado al aprobar M6 (2026-10-13)._
 
 | Módulo | Estado | Notas |
 |---|---|---|
@@ -51,17 +51,17 @@ _Actualizado al cerrar M6 (2026-10-12), pendiente del e2e del usuario._
 | M3 Sitios | ✅ Aprobado | |
 | M4 Gasto y operación | ✅ Aprobado | |
 | M5 Deploy y respaldos | ⏸ Bloqueado | Falta el dominio (Q6) y acceso SSH a la VPS |
-| M6 Colectores | 🧪 Listo para e2e | T6.0 (verificación de propiedad) añadida al plan |
+| M6 Colectores | ✅ Aprobado | T6.0 (verificación de propiedad) añadida al plan |
 | M8 Auditor | ✅ Aprobado | Adelantado a M5–M7 porque no depende del dominio |
 | M10 GEO manual | ✅ Aprobado | |
 | M7, M9, M11, M12 | Pendientes | |
 
-**Siguiente recomendado** (tras aprobar M6): **M7 Bots** (se desarrolla con logs de muestra; cierra el hito piloto M0–M8 salvo M5). Después M11 (requiere decidir Q3 y una API key). M5 sigue bloqueado por el dominio.
+**Siguiente recomendado**: **M7 Bots** (se desarrolla con logs de muestra; cierra el hito piloto M0–M8 salvo M5). Después M11 (requiere decidir Q3 y una API key). M5 sigue bloqueado por el dominio.
 
 Hallazgos de M6 útiles para quien siga:
 
 - **Sin verificar la propiedad del dominio (T6.0) no se importa nada** de GSC ni Bing: la service account y la key son de la plataforma. Soporte: `pnpm site:verify <dominio|id> [--staff|--clear]`.
-- chrisrm.dev aún no tiene datos en GSC ni en Bing (propiedad nueva) y **no tiene robots.txt ni sitemap** (404): URL Inspection solo revisa la portada. La inserción de filas reales y la granularidad de fechas de Bing quedan por confirmar cuando haya datos.
+- chrisrm.dev aún no tiene datos en GSC ni en Bing (propiedad nueva; en el e2e ambas APIs respondieron bien con 0 filas y URL Inspection dio la portada como indexada) y **no tiene robots.txt ni sitemap** (404): URL Inspection solo revisa la portada. La inserción de filas reales y la granularidad de fechas de Bing quedan por confirmar cuando haya datos.
 - URL Inspection responde 403 tanto sin acceso como para una URL que no considera de la propiedad; `src/server/inspection.ts` reconsulta la propiedad para distinguirlo.
 - Bing acepta la URL del sitio con o sin `www.` y con http o https.
 - La carga inicial de GSC (16 meses) tarda ~5 min por sitio (21 pasadas de ~12 s).
