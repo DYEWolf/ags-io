@@ -132,6 +132,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 - Diariamente, EL SISTEMA DEBE importar por sitio: consultas, páginas, país y dispositivo con clics, impresiones, CTR y posición media.
 - EL SISTEMA DEBE importar con ventana de reingesta de 4 días (los datos de GSC llegan con retraso) y de forma idempotente.
 - SI la API expone los informes de funciones generativas, EL SISTEMA DEBE importarlos en tablas separadas (ver pregunta abierta Q1).
+- *Diseño (M6)*: service account de la plataforma (`GOOGLE_SERVICE_ACCOUNT_KEY` en `.env`, el JSON en base64; token JWT firmado con `node:crypto` en `src/providers/google-auth.ts`, sin `google-auth-library`); el cliente la añade como usuario **Restringido** en su propiedad (Ajustes muestra el email y las instrucciones). Solo importan los sitios **activos, verificados (R-002) y con propiedad** (`domain/search/collectors.ts`); al reanudar uno pausado se recupera lo que falte. `gsc.schedule` (10:20 UTC) encola `gsc.sync` por sitio (política `stately`, `singletonKey` = sitio; también lo encola «Importar ahora»). Cada pasada (`domain/search/gsc.ts`) reimporta los últimos 4 días (`dataState: all`; el día en curso no) y, fuera de esa ventana, hasta 30 días de huecos o de historial (16 meses, lo que conserva GSC), encolándose de nuevo mientras falte; `collector_state` guarda el tramo **continuo** importado (`oldest`–`newest`), así un hueco a medio llenar nunca se da por cargado. Por día se piden dos consultas de búsqueda web: detalle `query × page × country × device` (hasta 50 000 filas, páginas de 25 000) en `gsc_daily` y totales `country × device` agregados por propiedad en `gsc_totals_daily` (el detalle omite las consultas anonimizadas: las tendencias salen de los totales); ambos se reemplazan por (sitio, día) en una transacción que bloquea la fila del sitio y se aborta si la propiedad cambió. Las fechas son las de GSC (hora del Pacífico) y el país es ISO alfa-3 en minúsculas. Cambiar la propiedad borra los datos de GSC del sitio y la carga empieza de cero. 403/404 → estado «sin acceso» (sin reintento); 429, 5xx y red → reintento del job, conservando lo importado. Retención: detalle 16 meses, totales indefinidos. Gratuita: no pasa por R-003.
 
 **R-011 Bing Webmaster Tools**
 - EL SISTEMA DEBE importar diariamente las métricas de búsqueda por sitio vía API key.
@@ -386,7 +387,13 @@ competitors    (id, site_id, name, name_key, aliases text[], domains text[], cre
                 -- único (site_id, name_key)
 brand_aliases  (id, site_id, alias, alias_key, created_at)  -- único (site_id, alias_key)
 
+collector_state (site_id, source gsc|bing|inspection, property, status pending|ok|no_access|error,
+                oldest, newest, last_run_at, last_success_at, last_error, updated_at)
+                -- pk (site_id, source); oldest–newest = tramo continuo importado
 gsc_daily      (site_id, date, query, page, country, device, clicks, impressions, ctr, position)
+                -- detalle; se reemplaza por (site_id, date); 16 meses
+gsc_totals_daily (site_id, date, country, device, clicks, impressions, ctr, position)
+                -- pk (site_id, date, country, device); agregado por propiedad
 gsc_ai_daily   (site_id, date, ... )                      -- si Q1 = sí
 bing_daily     (site_id, date, query, clicks, impressions, position)
 bing_ai_daily  (site_id, date, citations, page, grounding_query) -- si Q2 = sí
@@ -492,7 +499,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 
 ### M6 — Colectores gratuitos (R-010, R-011, R-012)
 - [x] T6.0 Verificación de propiedad del sitio (DNS TXT o meta tag) antes de importar datos.
-- [ ] T6.1 Service account + cliente GSC + job diario idempotente.
+- [x] T6.1 Service account + cliente GSC + job diario idempotente.
 - [ ] T6.2 Cliente Bing + job diario.
 - [ ] T6.3 Resolver Q1/Q2 e importar datos de IA si existen.
 - [ ] T6.4 Job semanal de URL Inspection con respeto de cuota.

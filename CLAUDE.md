@@ -71,7 +71,7 @@ Después de M10, qué necesita cada pendiente:
 - **M11 GEO automático**: API key del motor elegido en Q3; requiere M10.
 - **M12 Reportes y alertas**: bot de Telegram (token + chat id). Las alertas ya se registran en `alerts` (`spend_cap`, `jsonld_broken`).
 
-**Credenciales ya configuradas** (en `.env`, nunca en el repo): `PAGESPEED_API_KEY`, `BING_WEBMASTER_API_KEY`.
+**Credenciales ya configuradas** (en `.env`, nunca en el repo): `PAGESPEED_API_KEY`, `BING_WEBMASTER_API_KEY`, `GOOGLE_SERVICE_ACCOUNT_KEY` (base64 de `~/.config/ags-io/google-service-account.json`).
 
 **Accesos para M6 (listos desde 2026-10-12)**:
 

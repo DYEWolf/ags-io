@@ -16,6 +16,24 @@ const csv = z
       .filter(Boolean),
   )
 
+const serviceAccountSchema = z.object({
+  type: z.literal('service_account'),
+  client_email: z.email(),
+  private_key: z.string().includes('PRIVATE KEY'),
+  private_key_id: z.string().min(1),
+  token_uri: z.url().default('https://oauth2.googleapis.com/token'),
+})
+
+export type ServiceAccount = z.infer<typeof serviceAccountSchema>
+
+function decodeJson(base64: string): unknown {
+  try {
+    return JSON.parse(Buffer.from(base64, 'base64').toString('utf8'))
+  } catch {
+    return null
+  }
+}
+
 const schema = z
   .object({
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -44,6 +62,21 @@ const schema = z
     AUDIT_MIN_TEXT_CHARS: z.coerce.number().int().min(0).max(100_000).default(250),
     // PageSpeed Insights (R-033). Opcional: sin key la API funciona con una cuota muy baja.
     PAGESPEED_API_KEY: z.string().min(1).optional(),
+
+    // Search Console (R-010, R-012): JSON de la service account en base64. Sin ella no se importa.
+    GOOGLE_SERVICE_ACCOUNT_KEY: z
+      .string()
+      .min(1)
+      .optional()
+      .transform((value, ctx) => {
+        if (!value) return undefined
+        const parsed = serviceAccountSchema.safeParse(decodeJson(value))
+        if (!parsed.success) {
+          ctx.addIssue({ code: 'custom', message: 'JSON de service account inválido (base64)' })
+          return z.NEVER
+        }
+        return parsed.data
+      }),
   })
   .superRefine((value, ctx) => {
     if (value.EMAIL_PROVIDER === 'resend' && !value.RESEND_API_KEY) {

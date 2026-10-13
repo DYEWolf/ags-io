@@ -2,6 +2,8 @@ import { createFileRoute, getRouteApi, useRouter } from '@tanstack/react-router'
 import { useState, type SubmitEvent } from 'react'
 import { SiteForm } from '~/components/site-form'
 import { Alert, Badge, Button, Card, dateTimeFormat, formText } from '~/components/ui'
+import type { CollectorStatus } from '~/db/schema'
+import { BLOCKER_LABELS } from '~/domain/search/collectors'
 import { domainKey } from '~/domain/sites'
 import {
   MAX_VERIFICATION_FAILURES,
@@ -9,6 +11,12 @@ import {
   txtRecordValue,
   type VerificationMethod,
 } from '~/domain/verification'
+import {
+  getSearchConnections,
+  requestGscSync,
+  type CollectorView,
+  type RequestSyncResult,
+} from '~/functions/collectors'
 import {
   deleteSite,
   setSiteStatus,
@@ -20,6 +28,7 @@ import {
 const siteRoute = getRouteApi('/_app/sitios/$siteId')
 
 export const Route = createFileRoute('/_app/sitios/$siteId/ajustes')({
+  loader: ({ params }) => getSearchConnections({ data: { siteId: params.siteId } }),
   head: () => ({ meta: [{ title: 'Ajustes del sitio · ags-io' }] }),
   component: SitePage,
 })
@@ -34,6 +43,8 @@ function SitePage() {
       <StatusCard />
 
       <VerificationCard />
+
+      <GscCard />
 
       <Card title="Datos del sitio">
         <div className="flex flex-col gap-4">
@@ -207,6 +218,141 @@ function VerificationCard() {
             </Button>
           </div>
         ) : null}
+      </div>
+    </Card>
+  )
+}
+
+const STATUS_BADGES: Record<
+  CollectorStatus,
+  { tone: 'green' | 'red' | 'amber' | 'neutral'; label: string }
+> = {
+  pending: { tone: 'neutral', label: 'Pendiente' },
+  ok: { tone: 'green', label: 'Conectado' },
+  no_access: { tone: 'red', label: 'Sin acceso' },
+  error: { tone: 'amber', label: 'Error' },
+}
+
+const dayFormat = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeZone: 'UTC' })
+const formatDay = (day: string) => dayFormat.format(new Date(`${day}T00:00:00Z`))
+
+/** Estado de un colector: propiedad, bloqueo, última importación y tramo de datos. */
+function CollectorStatusBlock({ collector }: { collector: CollectorView }) {
+  const { blocker } = collector
+  // Un estado de otra propiedad (recién cambiada) no describe la actual.
+  const state = collector.state?.property === collector.property ? collector.state : null
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      <p>
+        <span className="text-neutral-600">Propiedad: </span>
+        {collector.property ? (
+          <code className="break-all">{collector.property}</code>
+        ) : (
+          <span className="text-neutral-500">sin configurar</span>
+        )}
+      </p>
+      {blocker ? (
+        <Alert tone="warning">{BLOCKER_LABELS[blocker]} No se importan datos.</Alert>
+      ) : null}
+      {state ? (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone={STATUS_BADGES[state.status].tone}>
+              {STATUS_BADGES[state.status].label}
+            </Badge>
+            {state.lastRunAt ? (
+              <span className="text-neutral-600">
+                Última importación: {dateTimeFormat.format(new Date(state.lastRunAt))}
+                {state.lastSuccessAt && state.lastSuccessAt !== state.lastRunAt
+                  ? ` (último éxito: ${dateTimeFormat.format(new Date(state.lastSuccessAt))})`
+                  : ''}
+              </span>
+            ) : null}
+          </div>
+          {state.oldest && state.newest ? (
+            <p className="text-neutral-600">
+              Datos importados del {formatDay(state.oldest)} al {formatDay(state.newest)}.
+            </p>
+          ) : null}
+          {state.lastError && state.status !== 'ok' ? (
+            <Alert tone={state.status === 'no_access' ? 'error' : 'warning'}>
+              {state.lastError}
+            </Alert>
+          ) : null}
+        </>
+      ) : !blocker ? (
+        <p className="text-neutral-600">Aún no se ha importado nada.</p>
+      ) : null}
+    </div>
+  )
+}
+
+function GscCard() {
+  const router = useRouter()
+  const site = siteRoute.useLoaderData()
+  const connections = Route.useLoaderData()
+  const [pending, setPending] = useState(false)
+  const [result, setResult] = useState<RequestSyncResult | null>(null)
+
+  async function sync() {
+    setPending(true)
+    setResult(null)
+    try {
+      setResult(await requestGscSync({ data: { siteId: site.id } }))
+      await router.invalidate()
+    } catch {
+      setResult({ ok: false, error: 'No se pudo encolar la importación. Inténtalo de nuevo.' })
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <Card
+      title="Search Console"
+      description="Clics, impresiones, CTR y posición de Google por consulta, página, país y dispositivo. Se importa cada día (los últimos 4 días se actualizan porque Google consolida con retraso) y, la primera vez, los 16 meses de historial que conserva Google."
+    >
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2 text-sm">
+          <p className="font-medium">Cómo dar acceso</p>
+          <ol className="list-decimal pl-5 text-neutral-600">
+            <li>
+              En Search Console, abre la propiedad → Configuración → Usuarios y permisos → Añadir
+              usuario.
+            </li>
+            <li>Escribe este email con permiso «Restringido» (solo lectura):</li>
+          </ol>
+          {connections.serviceAccountEmail ? (
+            <Code>{connections.serviceAccountEmail}</Code>
+          ) : (
+            <Alert tone="warning">La service account no está configurada en el servidor.</Alert>
+          )}
+          <p className="text-neutral-600">
+            Indica la propiedad (<code>sc-domain:{domainKey(site.domain)}</code> o el prefijo de
+            URL) en «Datos del sitio».
+          </p>
+        </div>
+
+        <CollectorStatusBlock collector={connections.gsc} />
+
+        {result?.ok === false ? <Alert tone="error">{result.error}</Alert> : null}
+        {result?.ok ? (
+          <Alert tone="success">
+            {result.queued
+              ? 'Importación encolada. Recarga en unos minutos para ver el estado.'
+              : 'Ya hay una importación en cola.'}
+          </Alert>
+        ) : null}
+        <div>
+          <Button
+            variant="secondary"
+            pending={pending}
+            disabled={connections.gsc.blocker !== null}
+            onClick={() => void sync()}
+          >
+            Importar ahora
+          </Button>
+        </div>
       </div>
     </Card>
   )

@@ -4,6 +4,8 @@ import { auditScheduleJob } from '~/worker/jobs/audit.schedule'
 import { authCleanupJob } from '~/worker/jobs/auth.cleanup'
 import { emailSendJob } from '~/worker/jobs/email.send'
 import { geoExtractJob } from '~/worker/jobs/geo.extract'
+import { gscScheduleJob } from '~/worker/jobs/gsc.schedule'
+import { gscSyncJob } from '~/worker/jobs/gsc.sync'
 import { siteVerifyJob } from '~/worker/jobs/site.verify'
 import { heartbeatJob } from '~/worker/jobs/system.heartbeat'
 
@@ -16,4 +18,6 @@ export const jobs: JobDefinition[] = [
   auditRunJob,
   geoExtractJob,
   siteVerifyJob,
+  gscScheduleJob,
+  gscSyncJob,
 ]

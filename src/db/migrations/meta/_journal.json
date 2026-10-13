@@ -85,6 +85,13 @@
       "when": 1791861363113,
       "tag": "0011_site_verification",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791861887588,
+      "tag": "0012_gsc",
+      "breakpoints": true
     }
   ]
 }

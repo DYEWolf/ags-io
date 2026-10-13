@@ -7,6 +7,7 @@ import { isUniqueViolation } from '~/db/errors'
 import { sites, type Site } from '~/db/schema'
 import { domainKey, siteAllowsPaidWork, type SiteData, type SiteStatus } from '~/domain/sites'
 import { logger } from '~/lib/logger'
+import { purgeGscData } from '~/server/collectors'
 
 const log = logger.child({ component: 'sites' })
 
@@ -57,21 +58,35 @@ export async function updateSite(
   // Otro dominio = otro dueño posible: token nuevo y verificación desde cero (SPEC R-002).
   const sameDomain = sql`${sites.domainKey} = ${key}`
   try {
-    const [site] = await db
-      .update(sites)
-      .set({
-        ...data,
-        domainKey: key,
-        verificationToken: sql`case when ${sameDomain} then ${sites.verificationToken}
+    return await db.transaction(async (tx) => {
+      const [previous] = await tx
+        .select({ gscProperty: sites.gscProperty })
+        .from(sites)
+        .where(scoped(organizationId, id))
+        .for('update')
+      if (!previous) return null
+      const [site] = await tx
+        .update(sites)
+        .set({
+          ...data,
+          domainKey: key,
+          verificationToken: sql`case when ${sameDomain} then ${sites.verificationToken}
           else replace(gen_random_uuid()::text, '-', '') end`,
-        verifiedAt: sql`case when ${sameDomain} then ${sites.verifiedAt} end`,
-        verificationMethod: sql`case when ${sameDomain} then ${sites.verificationMethod} end`,
-        verificationFailures: sql`case when ${sameDomain} then ${sites.verificationFailures} else 0 end`,
-        verificationCheckedAt: sql`case when ${sameDomain} then ${sites.verificationCheckedAt} end`,
-      })
-      .where(scoped(organizationId, id))
-      .returning()
-    return site ?? null
+          verifiedAt: sql`case when ${sameDomain} then ${sites.verifiedAt} end`,
+          verificationMethod: sql`case when ${sameDomain} then ${sites.verificationMethod} end`,
+          verificationFailures: sql`case when ${sameDomain} then ${sites.verificationFailures} else 0 end`,
+          verificationCheckedAt: sql`case when ${sameDomain} then ${sites.verificationCheckedAt} end`,
+        })
+        .where(scoped(organizationId, id))
+        .returning()
+      if (!site) return null
+      // Datos de otra propiedad no se mezclan con los nuevos: se borran y la carga empieza de cero.
+      if (previous.gscProperty !== site.gscProperty) {
+        await purgeGscData(site.id, tx)
+        log.info({ organizationId, siteId: id }, 'propiedad de GSC cambiada: datos borrados')
+      }
+      return site
+    })
   } catch (error) {
     if (isUniqueViolation(error)) throw new DomainTakenError(data.domain)
     throw error
