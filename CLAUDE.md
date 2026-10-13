@@ -74,7 +74,7 @@ Qué necesita cada pendiente:
 - **M11 GEO automático**: API key del motor elegido en Q3; requiere M10.
 - **M12 Reportes y alertas**: bot de Telegram (token + chat id). Las alertas ya se registran en `alerts` (`spend_cap`, `jsonld_broken`, `site_unverified`).
 
-**Credenciales ya configuradas** (en `.env`, nunca en el repo): `PAGESPEED_API_KEY`, `BING_WEBMASTER_API_KEY`, `GOOGLE_SERVICE_ACCOUNT_KEY` (base64 de `~/.config/ags-io/google-service-account.json`, que sigue fuera del repo). Falta `BING_ACCOUNT_EMAIL` (el email de la cuenta Microsoft de Bing Webmaster; sin él Ajustes pide escribir a soporte).
+**Credenciales ya configuradas** (en `.env`, nunca en el repo): `PAGESPEED_API_KEY`, `BING_WEBMASTER_API_KEY`, `GOOGLE_SERVICE_ACCOUNT_KEY` (base64 de `~/.config/ags-io/google-service-account.json`, que sigue fuera del repo). `BING_ACCOUNT_EMAIL` (`avebaphomet66@gmail.com`, la cuenta de Bing Webmaster dueña de la key; los clientes la ven en Ajustes). **Al tener el dominio (Q6)**, cambiar Bing a una cuenta dedicada del servicio (nueva key + email + chrisrm.dev en esa cuenta) y valorar lo mismo para la service account de Google.
 
 **Accesos de los colectores**:
 
