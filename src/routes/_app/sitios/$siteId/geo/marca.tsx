@@ -68,7 +68,11 @@ function BrandCard() {
         {brandAliases.length === 0 ? (
           <Alert tone="warning">Sin alias de marca no podemos medir si la IA te menciona.</Alert>
         ) : null}
-        {saved ? <Alert tone="success">Alias guardados.</Alert> : null}
+        {saved ? (
+          <Alert tone="success">
+            Alias guardados. Recalculamos las menciones de tus corridas en segundo plano.
+          </Alert>
+        ) : null}
         <label className="flex flex-col gap-1 text-sm font-medium text-neutral-800">
           Alias de la marca
           <textarea

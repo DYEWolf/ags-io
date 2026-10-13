@@ -10,6 +10,12 @@ import {
   type RunMode,
   type RunSource,
 } from '~/domain/geo/runs'
+import {
+  MENTION_REVIEWS,
+  mentionCounts,
+  type MentionEntityType,
+  type MentionReview,
+} from '~/domain/geo/mentions'
 import { dateToZonedInput } from '~/domain/time'
 import { organizationMiddleware } from '~/functions/middleware'
 import { assertCanManage } from '~/functions/sites'
@@ -25,6 +31,10 @@ export interface RunListItem {
   runAt: string
   citations: number
   ownCited: boolean
+  /** La marca aparece (mención segura o confirmada). */
+  brandMentioned: boolean
+  /** Hay menciones dudosas sin revisar. */
+  pendingReview: boolean
 }
 
 export interface RunsView {
@@ -48,9 +58,24 @@ export interface RunDetail {
   runAtInput: string
   answer: string
   citations: { url: string; origin: CitationOrigin; domain: string; own: boolean }[]
+  mentions: MentionView[]
   notes: string | null
   createdAt: string
   updatedAt: string
+}
+
+export interface MentionView {
+  id: string
+  entityType: MentionEntityType
+  /** Nombre del competidor; `null` para la marca. */
+  competitorName: string | null
+  matchCount: number
+  ambiguous: boolean
+  review: MentionReview
+  /** Cuenta en las métricas (segura o confirmada). */
+  counts: boolean
+  snippet: string
+  term: string
 }
 
 export type RunMutationResult =
@@ -104,6 +129,8 @@ export const getRun = createServerFn({ method: 'GET' })
     const found = await server.getRun(context.organizationId, data.id)
     if (!found) throw notFound()
     const { run, cited } = found
+    const { runMentions } = await import('~/server/geo-mentions')
+    const mentions = await runMentions(run.id)
     const origins = new Map(run.citations.map((citation) => [citation.url, citation.origin]))
     return {
       id: run.id,
@@ -118,6 +145,17 @@ export const getRun = createServerFn({ method: 'GET' })
       runAtInput: dateToZonedInput(run.runAt),
       answer: run.raw.text,
       citations: cited.map((row) => ({ ...row, origin: origins.get(row.url) ?? 'listed' })),
+      mentions: mentions.map((mention) => ({
+        id: mention.id,
+        entityType: mention.entityType,
+        competitorName: mention.competitorName,
+        matchCount: mention.matchCount,
+        ambiguous: mention.ambiguous,
+        review: mention.review,
+        counts: mentionCounts(mention),
+        snippet: mention.snippet,
+        term: mention.term,
+      })),
       notes: run.notes,
       createdAt: run.createdAt.toISOString(),
       updatedAt: run.updatedAt.toISOString(),
@@ -162,5 +200,17 @@ export const deleteRun = createServerFn({ method: 'POST' })
     assertCanManage(context.organizationRole)
     const server = await import('~/server/geo-runs')
     if (!(await server.deleteRun(context.organizationId, data.id))) throw notFound()
+    return { ok: true }
+  })
+
+export const setMentionReview = createServerFn({ method: 'POST' })
+  .middleware([organizationMiddleware])
+  .validator(z.object({ id: idSchema, review: z.enum(MENTION_REVIEWS) }))
+  .handler(async ({ context, data }) => {
+    assertCanManage(context.organizationRole)
+    const server = await import('~/server/geo-mentions')
+    if (!(await server.setMentionReview(context.organizationId, data.id, data.review))) {
+      throw notFound()
+    }
     return { ok: true }
   })

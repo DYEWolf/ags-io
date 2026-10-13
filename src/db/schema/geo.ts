@@ -5,15 +5,18 @@ import {
   boolean,
   check,
   index,
+  integer,
   jsonb,
   numeric,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import type { PromptIntent } from '~/domain/geo/config'
+import type { MentionEntityType, MentionReview } from '~/domain/geo/mentions'
 import type { Citation, Engine, RunMode, RunSource } from '~/domain/geo/runs'
 import { user } from './auth'
 import { sites } from './sites'
@@ -150,7 +153,40 @@ export const citedDomains = pgTable(
   ],
 )
 
+// R-053: una fila por entidad (la marca o un competidor) mencionada en una corrida. Se recalcula
+// desde `raw` cuando cambian los alias; `review` (la revisión manual) se conserva.
+export const mentions = pgTable(
+  'mentions',
+  {
+    id: text('id').primaryKey(),
+    runId: text('run_id')
+      .notNull()
+      .references(() => llmRuns.id, { onDelete: 'cascade' }),
+    entityType: text('entity_type').$type<MentionEntityType>().notNull(),
+    competitorId: text('competitor_id').references(() => competitors.id, { onDelete: 'cascade' }),
+    matchCount: integer('match_count').notNull(),
+    ambiguous: boolean('ambiguous').notNull(),
+    review: text('review').$type<MentionReview>().notNull().default('auto'),
+    snippet: text('snippet').notNull(),
+    term: text('term').notNull(),
+    extractedAt: tstz('extracted_at').notNull().defaultNow(),
+  },
+  (table) => [
+    // Una fila por entidad y corrida; la marca tiene competitor_id null (nulls not distinct).
+    unique('mentions_run_entity_uq')
+      .on(table.runId, table.entityType, table.competitorId)
+      .nullsNotDistinct(),
+    index('mentions_competitor_idx').on(table.competitorId),
+    check(
+      'mentions_entity_check',
+      sql`(${table.entityType} = 'brand' and ${table.competitorId} is null) or (${table.entityType} = 'competitor' and ${table.competitorId} is not null)`,
+    ),
+    check('mentions_review_check', sql`${table.review} in ('auto', 'confirmed', 'rejected')`),
+  ],
+)
+
 export type Prompt = typeof prompts.$inferSelect
 export type Competitor = typeof competitors.$inferSelect
 export type BrandAlias = typeof brandAliases.$inferSelect
 export type LlmRun = typeof llmRuns.$inferSelect
+export type Mention = typeof mentions.$inferSelect

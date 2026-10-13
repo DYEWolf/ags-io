@@ -1,6 +1,6 @@
 // Definición de colas compartida por `web` (produce) y `worker` (consume). Una cola se
 // declara una sola vez aquí o junto a su payload para que ambos procesos la creen igual.
-import type { PgBoss, Queue } from 'pg-boss'
+import type { PgBoss, Queue, QueuePolicy } from 'pg-boss'
 
 export type QueueConfig = Omit<Queue, 'name' | 'deadLetter' | 'policy' | 'partition'>
 
@@ -32,18 +32,24 @@ export interface QueueDefinition {
   config?: QueueConfig
   /** `false` para colas sin valor de revisión (p. ej. el heartbeat). */
   deadLetter?: boolean
+  /**
+   * Política de pg-boss (por defecto `standard`). Solo se aplica al crear la cola: pg-boss no
+   * permite cambiarla después, así que cambiarla exige una cola con otro nombre.
+   */
+  policy?: QueuePolicy
 }
 
 async function upsertQueue(
   boss: PgBoss,
   name: string,
   config: QueueConfig & { deadLetter?: string },
+  policy?: QueuePolicy,
 ) {
   // createQueue no modifica una cola existente; updateQueue aplica la config actual del código.
   if (await boss.getQueue(name)) {
     await boss.updateQueue(name, config)
   } else {
-    await boss.createQueue(name, config)
+    await boss.createQueue(name, { ...config, ...(policy ? { policy } : {}) })
   }
 }
 
@@ -53,9 +59,14 @@ export async function ensureQueue(boss: PgBoss, queue: QueueDefinition): Promise
   if (withDeadLetter) {
     await upsertQueue(boss, deadLetterName(queue.name), DEAD_LETTER_CONFIG)
   }
-  await upsertQueue(boss, queue.name, {
-    ...DEFAULT_QUEUE_CONFIG,
-    ...queue.config,
-    ...(withDeadLetter ? { deadLetter: deadLetterName(queue.name) } : {}),
-  })
+  await upsertQueue(
+    boss,
+    queue.name,
+    {
+      ...DEFAULT_QUEUE_CONFIG,
+      ...queue.config,
+      ...(withDeadLetter ? { deadLetter: deadLetterName(queue.name) } : {}),
+    },
+    queue.policy,
+  )
 }

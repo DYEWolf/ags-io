@@ -104,7 +104,7 @@ function RunsPage() {
         </p>
       ) : (
         <>
-          <Table head={['Fecha', 'Motor', 'Prompt', 'Citas']}>
+          <Table head={['Fecha', 'Motor', 'Prompt', 'Marca', 'Citas']}>
             {view.runs.map((run) => (
               <tr key={run.id} className="align-top">
                 <td className="px-4 py-2 whitespace-nowrap">
@@ -123,6 +123,16 @@ function RunsPage() {
                   ) : null}
                 </td>
                 <td className="px-4 py-2">{run.promptText}</td>
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <span className="flex flex-col items-start gap-1">
+                    {run.brandMentioned ? (
+                      <Badge tone="green">Te menciona</Badge>
+                    ) : (
+                      <span className="text-xs text-neutral-500">No</span>
+                    )}
+                    {run.pendingReview ? <Badge tone="amber">Por revisar</Badge> : null}
+                  </span>
+                </td>
                 <td className="px-4 py-2 whitespace-nowrap">
                   {run.citations}
                   {run.ownCited ? (

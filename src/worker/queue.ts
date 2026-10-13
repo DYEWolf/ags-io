@@ -1,4 +1,4 @@
-import type { Job, PgBoss } from 'pg-boss'
+import type { Job, PgBoss, QueuePolicy } from 'pg-boss'
 import type { Logger } from '~/lib/logger'
 import { ensureQueue, type QueueConfig } from '~/queue'
 
@@ -15,6 +15,8 @@ export interface JobDefinition<Data extends object = object> {
   queue?: QueueConfig
   /** `false` para jobs sin valor de revisión (p. ej. el heartbeat). */
   deadLetter?: boolean
+  /** Política de la cola (ver `QueueDefinition.policy`). */
+  policy?: QueuePolicy
   /** Cron en UTC (R-075) salvo que se indique `tz` (p. ej. la ventana nocturna de R-034). */
   schedule?: {
     cron: string
@@ -41,6 +43,7 @@ export async function registerJob(boss: PgBoss, job: JobDefinition, log: Logger)
     name: job.name,
     ...(job.queue ? { config: job.queue } : {}),
     ...(job.deadLetter === undefined ? {} : { deadLetter: job.deadLetter }),
+    ...(job.policy ? { policy: job.policy } : {}),
   })
 
   const jobLog = log.child({ queue: job.name })

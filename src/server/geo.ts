@@ -207,6 +207,20 @@ async function competitorConflict(
   return null
 }
 
+/**
+ * Tras cambiar los términos de la marca o de un competidor, las menciones de las corridas del
+ * sitio se recalculan en el worker (R-053). Si no se puede encolar, lo ya guardado sigue siendo
+ * válido: se registra el error y la próxima modificación (o `geo.extract` a mano) lo corrige.
+ */
+async function requestReextract(siteId: string): Promise<void> {
+  try {
+    const { enqueueGeoExtract } = await import('~/server/queue')
+    await enqueueGeoExtract(siteId)
+  } catch (error) {
+    log.error({ err: error, siteId }, 'no se pudo encolar la reextracción de menciones')
+  }
+}
+
 const duplicateCompetitor = () => fail('name', 'Ya tienes un competidor con este nombre.')
 
 export async function createCompetitor(
@@ -215,7 +229,7 @@ export async function createCompetitor(
   data: CompetitorData,
 ): Promise<GeoMutation | null> {
   try {
-    return await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       if (!(await lockSite(tx, organizationId, siteId))) return null
       const [total] = await tx
         .select({ n: count() })
@@ -234,6 +248,8 @@ export async function createCompetitor(
       log.info({ organizationId, siteId, competitorId: id }, 'competidor creado')
       return { ok: true } as const
     })
+    if (result?.ok) await requestReextract(siteId)
+    return result
   } catch (error) {
     if (isUniqueViolation(error)) return duplicateCompetitor()
     throw error
@@ -246,17 +262,21 @@ export async function updateCompetitor(
   data: CompetitorData,
 ): Promise<GeoMutation | null> {
   try {
-    return await db.transaction(async (tx) => {
+    const { result, siteId } = await db.transaction(async (tx) => {
       const siteId = await siteOfCompetitor(tx, organizationId, competitorId)
-      if (!siteId || !(await lockSite(tx, organizationId, siteId))) return null
+      if (!siteId || !(await lockSite(tx, organizationId, siteId))) {
+        return { result: null, siteId: null }
+      }
       const conflict = await competitorConflict(tx, siteId, data, competitorId)
-      if (conflict) return conflict
+      if (conflict) return { result: conflict, siteId }
       await tx
         .update(competitors)
         .set({ ...data, nameKey: matchKey(data.name) })
         .where(eq(competitors.id, competitorId))
-      return { ok: true } as const
+      return { result: { ok: true } as const, siteId }
     })
+    if (result?.ok && siteId) await requestReextract(siteId)
+    return result
   } catch (error) {
     if (isUniqueViolation(error)) return duplicateCompetitor()
     throw error
@@ -282,7 +302,7 @@ export async function setBrandAliases(
   siteId: string,
   aliases: string[],
 ): Promise<GeoMutation | null> {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     if (!(await lockSite(tx, organizationId, siteId))) return null
     const rows: Competitor[] = await tx
       .select()
@@ -306,4 +326,6 @@ export async function setBrandAliases(
     log.info({ organizationId, siteId, aliases: aliases.length }, 'alias de marca guardados')
     return { ok: true } as const
   })
+  if (result?.ok) await requestReextract(siteId)
+  return result
 }

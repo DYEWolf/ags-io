@@ -5,6 +5,7 @@ import { logger } from '~/lib/logger'
 import { ensureQueue } from '~/queue'
 import { AUDIT_QUEUE } from '~/queue/audit'
 import { EMAIL_QUEUE, emailJobSchema, type EmailJobData } from '~/queue/email'
+import { GEO_EXTRACT_QUEUE } from '~/queue/geo'
 
 const log = logger.child({ service: 'web', component: 'queue' })
 
@@ -26,6 +27,7 @@ async function start(): Promise<PgBoss> {
   // El web puede encolar antes de que el worker haya creado la cola (primer arranque).
   await ensureQueue(boss, EMAIL_QUEUE)
   await ensureQueue(boss, AUDIT_QUEUE)
+  await ensureQueue(boss, GEO_EXTRACT_QUEUE)
   return boss
 }
 
@@ -53,4 +55,14 @@ export function enqueueEmailInBackground(data: EmailJobData): void {
   enqueueEmail(data).catch((error: unknown) => {
     log.error({ err: error, template: data.template }, 'no se pudo encolar el correo')
   })
+}
+
+/**
+ * Pide recalcular las menciones de un sitio (R-053). Con la política `stately` y la clave del
+ * sitio, si ya hay una pasada en cola esta se descarta: la que espera verá el cambio.
+ */
+export async function enqueueGeoExtract(siteId: string): Promise<void> {
+  const boss = await producer()
+  const id = await boss.send(GEO_EXTRACT_QUEUE.name, { siteId }, { singletonKey: siteId })
+  log.info({ jobId: id, siteId, queued: id !== null }, 'reextracción de menciones pedida')
 }

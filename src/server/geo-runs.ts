@@ -12,6 +12,7 @@ import {
   type RunData,
 } from '~/domain/geo/runs'
 import { logger } from '~/lib/logger'
+import { extractRunMentions, loadEntities } from '~/server/geo-mentions'
 
 const log = logger.child({ component: 'geo-runs' })
 
@@ -97,6 +98,7 @@ export async function createRun(
       .insert(llmRuns)
       .values({ id, siteId, source: 'manual', createdBy: userId, ...runValues(data) })
     await saveCitedDomains(tx, id, data, site.domain)
+    await extractRunMentions(tx, { id, answer: data.answer }, await loadEntities(tx, siteId))
     log.info({ organizationId, siteId, runId: id, engine: data.engine }, 'corrida manual creada')
     return { ok: true, id } as const
   })
@@ -126,6 +128,8 @@ export async function updateRun(
     }
     await tx.update(llmRuns).set(runValues(data)).where(eq(llmRuns.id, runId))
     await saveCitedDomains(tx, runId, data, found.domain)
+    const entities = await loadEntities(tx, found.run.siteId)
+    await extractRunMentions(tx, { id: runId, answer: data.answer }, entities)
     return { ok: true, id: runId } as const
   })
 }
@@ -170,6 +174,9 @@ export async function listRuns(organizationId: string, siteId: string, filters: 
         citations: sql<number>`jsonb_array_length(${llmRuns.citations})`.mapWith(Number),
         // Columnas calificadas a mano: dentro de `sql` Drizzle no siempre antepone la tabla.
         ownCited: sql<boolean>`exists (select 1 from cited_domains cd where cd.run_id = ${llmRuns}.id and cd.own)`,
+        brandMentioned: sql<boolean>`exists (select 1 from mentions m where m.run_id = ${llmRuns}.id and m.entity_type = 'brand' and (m.review = 'confirmed' or (m.review = 'auto' and not m.ambiguous)))`,
+        // Menciones dudosas sin revisar (de cualquier entidad): piden una mirada humana.
+        pendingReview: sql<boolean>`exists (select 1 from mentions m where m.run_id = ${llmRuns}.id and m.review = 'auto' and m.ambiguous)`,
       })
       .from(llmRuns)
       .innerJoin(prompts, eq(prompts.id, llmRuns.promptId))

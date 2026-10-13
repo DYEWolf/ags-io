@@ -224,6 +224,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 **R-053 Extracción de menciones**
 - Para cada respuesta, EL SISTEMA DEBE detectar: menciones de la marca (con alias), menciones de competidores, dominios citados y si cita el dominio propio.
 - La detección DEBE ser primero determinista (coincidencia de alias/dominios); solo usar un LLM barato para desambiguar casos marcados como dudosos.
+- *Diseño (M10)*: `domain/geo/mentions.ts`. Entidades: la marca (sus alias) y cada competidor (nombre + alias). Se busca cada término normalizado con `matchKey` (sin acentos ni mayúsculas) y con límites de palabra (letras y dígitos de cualquier idioma); las URLs del texto no cuentan como mención (`https://rosetta.com.mx` no es «Rosetta») y dos términos solapados de la misma entidad («Panadería Rosetta» y «Rosetta») cuentan una vez. Una coincidencia es **dudosa** si el término tiene ≤ 3 letras o si se configuró con mayúsculas y aparece todo en minúsculas («Bloom» → «bloom»); una entidad es dudosa si todas sus coincidencias lo son. Se guarda una fila por entidad y corrida en `mentions` (veces, dudosa, fragmento de ±90 caracteres y término). Revisión manual en el detalle de la corrida: confirmar o descartar (y deshacer); **una mención cuenta en las métricas si es segura o confirmada** (`mentionCounts`). La extracción corre en la misma transacción al crear o editar una corrida; al cambiar alias o crear/editar un competidor, el job `geo.extract` recalcula todas las corridas del sitio desde `raw` conservando la revisión de cada entidad (cola con política `stately` y `singletonKey` = sitio: varios cambios seguidos = una pasada). Borrar un competidor borra sus menciones (cascade). Dominios citados y cita del dominio propio: `cited_domains` (R-051). En M11 (T11.3) un LLM barato desambigua las dudosas en lugar de la revisión manual.
 
 **R-054 Métricas GEO**
 - EL SISTEMA DEBE calcular por prompt, motor y periodo: tasa de mención (% de corridas), tasa de cita del dominio, share of voice contra competidores y dominios fuente más citados.
@@ -411,7 +412,10 @@ prompts        (id, site_id, text, text_key, intent category|evaluation|decision
                 location, active, created_at, updated_at)       -- único (site_id, text_key)
 llm_runs       (id, prompt_id, site_id, engine, mode, model, source manual|auto, run_at,
                 raw jsonb, citations jsonb, cost_usd, notes, created_by, created_at, updated_at)
-mentions       (run_id, entity_type brand|competitor, entity_id, cited_own_domain, snippet)
+mentions       (id, run_id, entity_type brand|competitor, competitor_id, match_count, ambiguous,
+                review auto|confirmed|rejected, snippet, term, extracted_at)
+                -- único (run_id, entity_type, competitor_id) nulls not distinct; la cita propia
+                -- vive en cited_domains.own
 cited_domains  (run_id, url, domain, own)                    -- pk (run_id, url)
 
 reports        (id, site_id, period, html_path, pdf_path, share_token, expires_at)
@@ -512,7 +516,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 ### M10 — GEO manual (R-050, R-051, R-053, R-054)
 - [x] T10.1 CRUD de prompts, competidores y alias.
 - [x] T10.2 Formulario de corrida manual.
-- [ ] T10.3 Extractor determinista de menciones y dominios citados.
+- [x] T10.3 Extractor determinista de menciones y dominios citados.
 - [ ] T10.4 Métricas con tamaño de muestra.
 
 ### M11 — GEO automático (R-052)
