@@ -1,5 +1,5 @@
-// Bots de búsqueda e IA (R-020). Los usa la auditoría de robots.txt (R-032) y, en M7, el
-// clasificador de logs. Lógica pura.
+// Bots de búsqueda e IA (R-020). Los usan la auditoría de robots.txt (R-032) y el
+// clasificador de los logs de Caddy (M7). Lógica pura.
 
 export const BOT_CATEGORIES = ['search', 'ai-search', 'ai-user', 'ai-training'] as const
 export type BotCategory = (typeof BOT_CATEGORIES)[number]
@@ -35,3 +35,30 @@ export const BOTS: readonly BotInfo[] = [
   { token: 'Google-Extended', owner: 'Google', category: 'ai-training', robotsOnly: true },
   { token: 'Applebot-Extended', owner: 'Apple', category: 'ai-training', robotsOnly: true },
 ]
+
+/** Bot no catalogado: el user-agent se declara como bot, crawler o spider. */
+export const OTHER_BOT = 'other'
+
+const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+// Token como palabra (`Googlebot/2.1`, `compatible; GPTBot/1.3`); los más largos primero para
+// que `Claude-SearchBot` no caiga en otro token que contenga.
+const TOKEN_PATTERNS = BOTS.filter((bot) => !bot.robotsOnly)
+  .toSorted((a, b) => b.token.length - a.token.length)
+  .map((bot) => ({
+    token: bot.token,
+    pattern: new RegExp(`(^|[^a-z0-9-])${escape(bot.token)}([^a-z0-9]|$)`, 'i'),
+  }))
+
+const GENERIC_BOT = /bot\b|bot\/|crawler|spider|slurp/i
+
+/**
+ * Bot al que corresponde un user-agent (R-020): su token del catálogo, `other` si se declara bot
+ * sin estar catalogado, o `null` si parece una persona (no se guarda).
+ */
+export function classifyUserAgent(ua: string): string | null {
+  for (const { token, pattern } of TOKEN_PATTERNS) {
+    if (pattern.test(ua)) return token
+  }
+  return GENERIC_BOT.test(ua) ? OTHER_BOT : null
+}

@@ -83,6 +83,10 @@ const schema = z
     // clientes añaden como usuario de su sitio en Bing). Sin key no se importa.
     BING_WEBMASTER_API_KEY: blankAsUndefined(z.string().min(1).optional()),
     BING_ACCOUNT_EMAIL: blankAsUndefined(z.email().optional()),
+
+    // Bots (R-020): directorio de los access logs JSON de Caddy, montado en solo lectura en el
+    // worker. En Docker es siempre /var/log/caddy (compose monta ahí el del host).
+    CADDY_LOG_DIR: blankAsUndefined(z.string().min(1).default('/var/log/caddy')),
   })
   .superRefine((value, ctx) => {
     if (value.EMAIL_PROVIDER === 'resend' && !value.RESEND_API_KEY) {

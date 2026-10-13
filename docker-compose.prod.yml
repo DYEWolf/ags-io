@@ -10,6 +10,11 @@ services:
   worker:
     image: ${AGS_IMAGE:?define AGS_IMAGE, p. ej. ghcr.io/<owner>/ags-io:<tag>}
     build: !reset null
+    environment:
+      CADDY_LOG_DIR: /var/log/caddy
+    # Access logs JSON de Caddy (R-020), en solo lectura.
+    volumes:
+      - ${CADDY_LOG_HOST_DIR:-/var/log/caddy}:/var/log/caddy:ro
 
 networks:
   caddy:

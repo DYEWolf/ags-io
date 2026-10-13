@@ -10,3 +10,6 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Datos locales de desarrollo (logs de Caddy de muestra)
+.dev/

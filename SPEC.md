@@ -150,6 +150,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 - EL SISTEMA DEBE leer los access logs JSON de Caddy (montados en solo lectura) de forma incremental, sin reprocesar líneas.
 - EL SISTEMA DEBE clasificar por user-agent al menos: Googlebot, Bingbot, GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-SearchBot, Claude-User, PerplexityBot, Perplexity-User, Applebot, y "otro".
 - EL SISTEMA DEBE guardar por hit: timestamp, host, path, status, bytes, user-agent, IP, bot clasificado, verificado (sí/no/desconocido).
+- *Diseño (M7, ingesta)*: el worker monta el directorio de logs en solo lectura en `/var/log/caddy` (`CADDY_LOG_DIR`; en la VPS `CADDY_LOG_HOST_DIR`, por defecto `/var/log/caddy`; en desarrollo `.dev/caddy-logs`, que llena `pnpm bots:sample`). `bots.ingest` corre cada minuto (política `stately`: nunca dos lecturas a la vez) y lee de cada archivo activo (`*.log`, `*.json`, `*.jsonl` que no sean rotados) lo nuevo desde su cursor en `log_cursors` (inode + offset en bytes, siempre a inicio de línea): solo líneas completas, como mucho 50 MB por pasada (si queda más, se encola otra al momento) y hits en lotes de 1 000 en la **misma transacción** que el avance del cursor, que además solo se mueve si nadie lo movió (así un reintento o una caída no duplican ni pierden líneas). **Rotación**: Caddy renombra el archivo a `<nombre>-<fecha UTC>[-size|-time].<ext>` y lo comprime con gzip; cuando cambia el inode, antes de seguir con el nuevo se termina el rotado que continúa al cursor (`draining`): el que conserva el inode si aún no está comprimido o, si no, el primero con fecha posterior a `inode_since` (desde cuándo se sigue ese inode), leyendo el `.gz` si ya se comprimió; varias rotaciones seguidas (worker caído) se leen en orden. Un archivo más corto que el offset se truncó y se lee desde 0. Se parsean las líneas del logger `http.log.access…` (`ts` en segundos Unix o ISO); IP = `client_ip` (IP real tras proxies de confianza) o `remote_ip`; host en minúsculas sin puerto; path sin query string (puede llevar datos del visitante); líneas de más de 64 KB o inválidas se cuentan y descartan. **Solo se guardan bots** (catalogados u `other`), nunca el tráfico de personas. Los hits van **por host, no por sitio**: un dominio puede estar en varias organizaciones y sus datos solo se muestran al sitio verificado (R-002, R-005). Solo existen logs de los sitios que sirve nuestro Caddy.
 
 **R-021 Verificación de bots**
 - Para bots con rangos IP publicados (p. ej. OpenAI), EL SISTEMA DEBE verificar contra listas actualizadas diariamente.
@@ -408,9 +409,11 @@ index_status   (site_id, url, checked_at, verdict PASS|PARTIAL|FAIL|NEUTRAL|VERD
                 -- pk (site_id, url, checked_at); 12 semanas
 inspection_quota (property, day, used)                   -- pk (property, day); día del Pacífico
 
-bot_hits       (id, ts, host, path, status, bytes, ua, ip, bot, verified)   -- 90 días
+bot_hits       (id, ts, host, path, status, bytes, ua, ip inet, bot,
+                verified verified|failed|unverified)   -- solo bots; por host; 90 días
 bot_daily      (site_id, date, bot, verified, hits, errors_4xx, errors_5xx)
-log_cursors    (file, inode, offset, updated_at)
+log_cursors    (file, inode, inode_since, offset, draining, updated_at)
+                -- pk file (archivo activo); draining = rotado que se está terminando
 ip_verifications (ip, bot, verified, method, checked_at)
 
 audits         (id, site_id, trigger scheduled|manual, status queued|running|done|failed,
@@ -515,7 +518,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [x] T6.5 Vistas del dashboard: tendencias por sitio.
 
 ### M7 — Bots (R-020–R-023)
-- [ ] T7.1 Montaje ro de logs + lector incremental con cursor.
+- [x] T7.1 Montaje ro de logs + lector incremental con cursor.
 - [ ] T7.2 Clasificador de user-agents (tabla configurable).
 - [ ] T7.3 Verificación: rangos publicados + DNS inverso con caché.
 - [ ] T7.4 Agregados diarios, retención y vista de bots de IA.
