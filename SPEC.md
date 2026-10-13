@@ -131,12 +131,12 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 - EL SISTEMA DEBE autenticarse con una *service account* agregada como usuario en cada propiedad GSC.
 - Diariamente, EL SISTEMA DEBE importar por sitio: consultas, páginas, país y dispositivo con clics, impresiones, CTR y posición media.
 - EL SISTEMA DEBE importar con ventana de reingesta de 4 días (los datos de GSC llegan con retraso) y de forma idempotente.
-- SI la API expone los informes de funciones generativas, EL SISTEMA DEBE importarlos en tablas separadas (ver pregunta abierta Q1).
+- SI la API expone los informes de funciones generativas, EL SISTEMA DEBE importarlos en tablas separadas. *Q1 resuelta (M6): no los expone*; no se importan hasta que exista API (backlog).
 - *Diseño (M6)*: service account de la plataforma (`GOOGLE_SERVICE_ACCOUNT_KEY` en `.env`, el JSON en base64; token JWT firmado con `node:crypto` en `src/providers/google-auth.ts`, sin `google-auth-library`); el cliente la añade como usuario **Restringido** en su propiedad (Ajustes muestra el email y las instrucciones). Solo importan los sitios **activos, verificados (R-002) y con propiedad** (`domain/search/collectors.ts`); al reanudar uno pausado se recupera lo que falte. `gsc.schedule` (10:20 UTC) encola `gsc.sync` por sitio (política `stately`, `singletonKey` = sitio; también lo encola «Importar ahora»). Cada pasada (`domain/search/gsc.ts`) reimporta los últimos 4 días (`dataState: all`; el día en curso no) y, fuera de esa ventana, hasta 30 días de huecos o de historial (16 meses, lo que conserva GSC), encolándose de nuevo mientras falte; `collector_state` guarda el tramo **continuo** importado (`oldest`–`newest`), así un hueco a medio llenar nunca se da por cargado. Por día se piden dos consultas de búsqueda web: detalle `query × page × country × device` (hasta 50 000 filas, páginas de 25 000) en `gsc_daily` y totales `country × device` agregados por propiedad en `gsc_totals_daily` (el detalle omite las consultas anonimizadas: las tendencias salen de los totales); ambos se reemplazan por (sitio, día) en una transacción que bloquea la fila del sitio y se aborta si la propiedad cambió. Las fechas son las de GSC (hora del Pacífico) y el país es ISO alfa-3 en minúsculas. Cambiar la propiedad borra los datos de GSC del sitio y la carga empieza de cero. 403/404 → estado «sin acceso» (sin reintento); 429, 5xx y red → reintento del job, conservando lo importado. Retención: detalle 16 meses, totales indefinidos. Gratuita: no pasa por R-003.
 
 **R-011 Bing Webmaster Tools**
 - EL SISTEMA DEBE importar diariamente las métricas de búsqueda por sitio vía API key.
-- SI la API expone AI Performance (citas, páginas citadas, grounding queries), EL SISTEMA DEBE importarlo (Q2).
+- SI la API expone AI Performance (citas, páginas citadas, grounding queries), EL SISTEMA DEBE importarlo. *Q2 resuelta (M6): no lo expone*; no se importa hasta que exista API (backlog).
 - *Diseño (M6)*: API key de la cuenta de Bing de la plataforma (`BING_WEBMASTER_API_KEY`; `BING_ACCOUNT_EMAIL` es el usuario que el cliente añade en su sitio, con rol de solo lectura, y lo muestra Ajustes). Mismas condiciones que GSC: activo, verificado (R-002) y con sitio de Bing. `bing.schedule` (10:40 UTC) encola `bing.sync` (política `stately` por sitio, también desde «Importar ahora»). Cada pasada pide `GetQueryStats`, `GetPageStats` y `GetRankAndTrafficStats`, que devuelven el historial reciente completo de Bing con su propia granularidad de fechas; las fechas WCF (`/Date(ms-0700)/`) se convierten al día de su desfase (hora del Pacífico). Consultas (`bing_daily`) y páginas (`bing_page_daily`) se reemplazan desde la fecha más antigua recibida; los totales (`bing_totals_daily`) se actualizan por día y nunca se borran. Una respuesta vacía no borra nada. ApiErrorCode 7/11/13/14 (p. ej. `NotAuthorized`) → «sin acceso»; 1/2/4/5 y 5xx → reintento; `InvalidApiKey` → error. Cambiar el sitio de Bing borra sus datos. Bing acepta la URL con o sin `www.` y con http o https para el mismo sitio.
 
 **R-012 Estado de indexación**
@@ -395,13 +395,11 @@ gsc_daily      (site_id, date, query, page, country, device, clicks, impressions
                 -- detalle; se reemplaza por (site_id, date); 16 meses
 gsc_totals_daily (site_id, date, country, device, clicks, impressions, ctr, position)
                 -- pk (site_id, date, country, device); agregado por propiedad
-gsc_ai_daily   (site_id, date, ... )                      -- si Q1 = sí
 bing_daily     (site_id, date, query, clicks, impressions, avg_click_position,
                 avg_impression_position)                -- pk (site_id, date, query)
 bing_page_daily (site_id, date, page, clicks, impressions, avg_click_position,
                 avg_impression_position)                -- pk (site_id, date, page)
 bing_totals_daily (site_id, date, clicks, impressions)  -- pk (site_id, date)
-bing_ai_daily  (site_id, date, citations, page, grounding_query) -- si Q2 = sí
 index_status   (site_id, url, checked_at, verdict, coverage_state)
 
 bot_hits       (id, ts, host, path, status, bytes, ua, ip, bot, verified)   -- 90 días
@@ -506,7 +504,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [x] T6.0 Verificación de propiedad del sitio (DNS TXT o meta tag) antes de importar datos.
 - [x] T6.1 Service account + cliente GSC + job diario idempotente.
 - [x] T6.2 Cliente Bing + job diario.
-- [ ] T6.3 Resolver Q1/Q2 e importar datos de IA si existen.
+- [x] T6.3 Resolver Q1/Q2 e importar datos de IA si existen (no existen por API: ver §13).
 - [ ] T6.4 Job semanal de URL Inspection con respeto de cuota.
 - [ ] T6.5 Vistas del dashboard: tendencias por sitio.
 
@@ -552,6 +550,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - Equipo: invitar miembros a una organización con roles.
 - Login con Google (OAuth).
 - Planes, límites por plan y cobro.
+- Datos de IA de Search Console y Bing (Q1/Q2) en `gsc_ai_daily` y `bing_ai_daily` cuando sus APIs los expongan; revisar sus referencias al planificar M12.
 
 ---
 
@@ -586,13 +585,13 @@ Todas las cifras son estimaciones; validar con las tarifas vigentes antes de act
 
 ## 13. Preguntas abiertas (resolver antes de la tarea indicada)
 
-- **Q1** (T6.3) ¿La API de Search Console expone los informes de funciones generativas o solo la UI?
-- **Q2** (T6.3) ¿El AI Performance de Bing Webmaster Tools está disponible vía API?
 - **Q3** (T11.1) ¿Qué motor primero? Evaluar el tier gratuito de Gemini (¿incluye grounding con búsqueda?) contra el costo por llamada de OpenAI y Perplexity.
 - **Q4** (T9.3) ¿Serper permite búsquedas de Maps con coordenadas exactas para el geo-grid, o hace falta otro proveedor?
 - **Q6** (M5) Dominio del servicio. No se necesita hasta el deploy; en desarrollo se usa `localhost` y Mailpit.
 
 **Resueltas**
+- **Q1** → No (M6, 2026-10-12). El informe de IA generativa de Search Console (AI Overviews, AI Mode y Discover; solo impresiones) existe desde el 3 de junio de 2026 únicamente en la interfaz: la referencia de `searchanalytics.query` (actualizada el 2026-08-11) no tiene `type` ni dimensión para él.
+- **Q2** → No (M6, 2026-10-12). AI Performance de Bing Webmaster Tools (citas, páginas citadas, grounding queries, citation share; en vista previa) es solo de la interfaz: la API no tiene métodos para esos datos.
 - **Q5** → Better Auth autohospedado (v0.2): el producto es B2C y requiere verificación de email, recuperación, 2FA, organizaciones y panel de staff.
 - **Q7** → Resend para email en producción (v0.2): GA, free tier de 3,000 correos/mes sin suscripción. Cloudflare Email Service descartado por ahora: en beta y requiere Workers Paid ($5/mes).
 
