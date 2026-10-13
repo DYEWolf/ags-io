@@ -55,7 +55,7 @@ _Actualizado tras aprobar M10 (2026-10-12)._
 | M10 GEO manual | ✅ Aprobado | |
 | M6, M7, M9, M11, M12 | Pendientes | |
 
-**Siguiente recomendado**: M11 GEO automático ("empieza módulo M11"; requiere decidir Q3 y una API key del motor) o, si llegan antes los accesos, M6 Colectores. M5 sigue bloqueado por el dominio.
+**Siguiente recomendado**: **M6 Colectores** ("empieza módulo M6"): sus accesos ya están listos (ver abajo) y es parte del hito piloto (M0–M8). Después M7 (logs de muestra) y M11 (requiere decidir Q3 y una API key). M5 sigue bloqueado por el dominio.
 
 Hallazgos de M10 útiles para quien siga:
 
@@ -65,13 +65,19 @@ Hallazgos de M10 útiles para quien siga:
 
 Después de M10, qué necesita cada pendiente:
 
-- **M6 Colectores**: service account de Google con acceso a la propiedad de Search Console del sitio de prueba (chrisrm.dev), sitio verificado en Bing Webmaster Tools + API key; resolver Q1/Q2 (¿datos de IA por API?).
+- **M6 Colectores**: accesos listos (ver "Accesos para M6"); falta resolver Q1/Q2 (¿datos de IA por API?).
 - **M7 Bots**: logs de Caddy de la VPS para la verificación real (se puede desarrollar con logs de muestra).
 - **M9 Rank tracking**: API key de Serper; resolver Q4.
 - **M11 GEO automático**: API key del motor elegido en Q3; requiere M10.
 - **M12 Reportes y alertas**: bot de Telegram (token + chat id). Las alertas ya se registran en `alerts` (`spend_cap`, `jsonld_broken`).
 
-**Credenciales ya configuradas** (en `.env`, nunca en el repo): `PAGESPEED_API_KEY`.
+**Credenciales ya configuradas** (en `.env`, nunca en el repo): `PAGESPEED_API_KEY`, `BING_WEBMASTER_API_KEY`.
+
+**Accesos para M6 (listos desde 2026-10-12)**:
+
+- Search Console: la propiedad de dominio `sc-domain:chrisrm.dev` está verificada por DNS en Porkbun (el TXT no se borra). La service account `ags-io-gsc@ags-io.iam.gserviceaccount.com` (proyecto `ags-io`, Search Console API habilitada) tiene permiso Restringido. Su key JSON está **fuera del repo** en `~/.config/ags-io/google-service-account.json` (600); en M6 se decide cómo montarla en los contenedores. La llamada real con la service account aún no se probó: hazlo al empezar M6. La propiedad es nueva, así que tendrá pocos datos los primeros días.
+- Bing Webmaster Tools: chrisrm.dev importado desde Search Console y verificado; `GetUserSites` con la key responde 200 con el sitio `https://chrisrm.dev/` (ese es el valor del campo "sitio Bing").
+- El DNS de chrisrm.dev está en Porkbun (nameservers `*.ns.porkbun.com`), no en Cloudflare.
 
 **Sitio piloto**: chrisrm.dev (cuenta test@test.com). Sitios públicos útiles para probar: vite.dev (SSR, 57 URLs), excalidraw.com (contenido solo con JS), levainbakery.com (Shopify, pesado).
 
