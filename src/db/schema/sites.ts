@@ -1,7 +1,16 @@
 // R-002: sitios de una organización. Todo lo que cuelgue de un sitio usará ON DELETE CASCADE.
 import { sql } from 'drizzle-orm'
-import { check, doublePrecision, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import {
+  check,
+  doublePrecision,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core'
 import type { SiteStatus } from '~/domain/sites'
+import type { VerificationMethod } from '~/domain/verification'
 import { organization } from './auth'
 
 const tstz = (name: string) => timestamp(name, { withTimezone: true, mode: 'date' })
@@ -32,6 +41,15 @@ export const sites = pgTable(
     // Rutas clave (R-032, R-033): se evalúan en robots.txt para cada bot y en PageSpeed.
     keyPaths: text('key_paths').array().notNull().default(['/']),
     status: text('status').$type<SiteStatus>().notNull().default('active'),
+    // Propiedad del dominio (domain/verification.ts): sin verificar no se importan GSC ni Bing.
+    // El token cambia con el dominio; 32 caracteres hexadecimales.
+    verificationToken: text('verification_token')
+      .notNull()
+      .default(sql`replace(gen_random_uuid()::text, '-', '')`),
+    verifiedAt: tstz('verified_at'),
+    verificationMethod: text('verification_method').$type<VerificationMethod>(),
+    verificationFailures: integer('verification_failures').notNull().default(0),
+    verificationCheckedAt: tstz('verification_checked_at'),
     createdAt: tstz('created_at').notNull().defaultNow(),
     updatedAt: tstz('updated_at')
       .notNull()
@@ -45,6 +63,11 @@ export const sites = pgTable(
     check('sites_lat_check', sql`${table.lat} between -90 and 90`),
     check('sites_lng_check', sql`${table.lng} between -180 and 180`),
     check('sites_country_check', sql`${table.country} ~ '^[A-Z]{2}$'`),
+    check(
+      'sites_verification_check',
+      sql`(${table.verifiedAt} is null) = (${table.verificationMethod} is null)
+        and (${table.verificationMethod} is null or ${table.verificationMethod} in ('dns', 'meta', 'staff'))`,
+    ),
   ],
 )
 

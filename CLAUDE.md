@@ -35,7 +35,7 @@ Cuando el usuario pida empezar un módulo:
 - Si `docker` se cuelga en esta Mac: `DOCKER_CONFIG` temporal con `{}` y `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock` (detalle en la memoria de Claude).
 - `localhost:3000` puede estar ocupado por otro proyecto del usuario (p. ej. `crucigrama` con Vite en `[::1]:3000`); Chrome resuelve a ese. Compruébalo con `lsof -nP -iTCP:3000 -sTCP:LISTEN` y avisa; no lo mates.
 - Migraciones: `pnpm db:generate --name <nombre>` y `pnpm db:migrate` (el contenedor `web` también migra al arrancar).
-- Scripts útiles: `pnpm staff:create`, `pnpm spend:demo`, `pnpm audit:run <dominio|id> [--inline]`, `pnpm schemaorg:update` (ver README).
+- Scripts útiles: `pnpm staff:create`, `pnpm spend:demo`, `pnpm audit:run <dominio|id> [--inline]`, `pnpm site:verify <dominio|id> [--staff|--clear]`, `pnpm schemaorg:update` (ver README).
 - **Usuarios del usuario**: `staff@test.com` (staff con 2FA) y `test@test.com`. No los borres ni crees datos en sus cuentas. Para probar, crea usuarios/organizaciones temporales (p. ej. `*@example.test`) y bórralos al terminar.
 - Para e2e en Chrome con usuario temporal: registro por `POST /api/auth/sign-up/email`, verificación con el enlace de Mailpit (`/api/v1/search`), y `form_input` para los formularios.
 

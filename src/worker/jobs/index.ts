@@ -4,6 +4,7 @@ import { auditScheduleJob } from '~/worker/jobs/audit.schedule'
 import { authCleanupJob } from '~/worker/jobs/auth.cleanup'
 import { emailSendJob } from '~/worker/jobs/email.send'
 import { geoExtractJob } from '~/worker/jobs/geo.extract'
+import { siteVerifyJob } from '~/worker/jobs/site.verify'
 import { heartbeatJob } from '~/worker/jobs/system.heartbeat'
 
 // Registro de jobs del worker: añadir aquí cada archivo nuevo de `jobs/`.
@@ -14,4 +15,5 @@ export const jobs: JobDefinition[] = [
   auditScheduleJob,
   auditRunJob,
   geoExtractJob,
+  siteVerifyJob,
 ]

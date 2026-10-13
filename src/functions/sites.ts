@@ -4,6 +4,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import type { Site } from '~/db/schema'
 import { SITE_STATUSES, siteInputSchema } from '~/domain/sites'
+import type { VerificationMethod } from '~/domain/verification'
 import { organizationMiddleware } from '~/functions/middleware'
 
 export interface SiteView {
@@ -23,6 +24,13 @@ export interface SiteView {
   locale: string
   country: string
   status: (typeof SITE_STATUSES)[number]
+  /** Propiedad del dominio: sin ella no se importan Search Console ni Bing. */
+  verification: {
+    token: string
+    verifiedAt: string | null
+    method: VerificationMethod | null
+    failures: number
+  }
   createdAt: string
   updatedAt: string
 }
@@ -49,6 +57,12 @@ function toView(site: Site): SiteView {
     locale: site.locale,
     country: site.country,
     status: site.status,
+    verification: {
+      token: site.verificationToken,
+      verifiedAt: site.verifiedAt?.toISOString() ?? null,
+      method: site.verificationMethod,
+      failures: site.verificationFailures,
+    },
     createdAt: site.createdAt.toISOString(),
     updatedAt: site.updatedAt.toISOString(),
   }
@@ -149,4 +163,25 @@ export const deleteSite = createServerFn({ method: 'POST' })
     const server = await import('~/server/sites')
     if (!(await server.deleteSite(context.organizationId, data.id))) throw notFound()
     return { ok: true }
+  })
+
+export type VerifySiteResult =
+  | { status: 'cooldown' }
+  | {
+      status: 'verified' | 'failed'
+      dns: { ok: boolean; detail: string }
+      meta: { ok: boolean; detail: string }
+    }
+
+/** Comprueba ahora el token del sitio por DNS TXT y por meta tag en la portada. */
+export const verifySite = createServerFn({ method: 'POST' })
+  .middleware([organizationMiddleware])
+  .validator(idSchema)
+  .handler(async ({ context, data }): Promise<VerifySiteResult> => {
+    assertCanManage(context.organizationRole)
+    const server = await import('~/server/site-verification')
+    const result = await server.verifySite(context.organizationId, data.id)
+    if (result.status === 'not_found') throw notFound()
+    if (result.status === 'cooldown') return result
+    return { status: result.status, dns: result.check.dns, meta: result.check.meta }
   })

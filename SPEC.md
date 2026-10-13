@@ -116,7 +116,8 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 - EL SISTEMA DEBE permitir CRUD de sitios dentro de una organización (una organización puede tener N sitios). La organización reemplaza a la entidad "cliente" de v0.1.
 - Cada sitio DEBE tener: dominio canónico, propiedad GSC, sitio Bing, ubicación principal (lat/lng, ciudad), idioma/país, estado (activo/pausado) y rutas clave (R-032, R-033; por defecto `/`). Opcionalmente, los datos del negocio (nombre, calle y número, estado, código postal, teléfono) que audita R-031.
 - CUANDO un sitio está pausado, EL SISTEMA NO DEBE ejecutar jobs que consuman créditos para ese sitio. Tampoco se audita (R-034).
-- *Diseño (M3)*: el dominio se normaliza en `domain/sites.ts` (minúsculas, sin esquema/ruta/puerto, punycode; se rechazan IPs y nombres sin TLD) y es **único por organización**, contando `www.` como el mismo sitio (`domain_key`). No es único global: así nadie puede ocupar un dominio ajeno ni averiguar qué dominios son clientes; la propiedad real se comprueba con GSC (M6). La propiedad GSC (`sc-domain:` o prefijo de URL) y el sitio de Bing deben pertenecer al dominio; ambos son opcionales hasta M6. Todo job de pago obtiene el sitio con `siteForPaidWork()` (src/server/sites.ts), que devuelve `null` si está pausado; la regla pura es `siteAllowsPaidWork()`.
+- *Diseño (M3)*: el dominio se normaliza en `domain/sites.ts` (minúsculas, sin esquema/ruta/puerto, punycode; se rechazan IPs y nombres sin TLD) y es **único por organización**, contando `www.` como el mismo sitio (`domain_key`). No es único global: así nadie puede ocupar un dominio ajeno ni averiguar qué dominios son clientes; la propiedad real se comprueba con la verificación de M6 (abajo). La propiedad GSC (`sc-domain:` o prefijo de URL) y el sitio de Bing deben pertenecer al dominio; ambos son opcionales hasta M6. Todo job de pago obtiene el sitio con `siteForPaidWork()` (src/server/sites.ts), que devuelve `null` si está pausado; la regla pura es `siteAllowsPaidWork()`.
+- *Diseño (M6, verificación de propiedad)*: la service account de Google y la key de Bing son de la plataforma, así que tener acceso a una propiedad no prueba que el sitio sea de quien lo registró (otra organización podría registrar el mismo dominio y leer sus datos). Cada sitio tiene un token (32 hex, `domain/verification.ts`) que se publica como registro TXT `ags-io-verification=<token>` en el dominio sin `www.` o como `<meta name="ags-io-verification" content="<token>">` en el HTML inicial de la portada (descargada con `src/audit/http.ts`; una redirección fuera del dominio no cuenta). **Sin verificar no se importan GSC ni Bing.** El cliente comprueba desde Ajustes (cada 10 s como máximo); un fallo manual no retira una verificación vigente. El job `site.verify` (diario, 03:40 UTC) la revisa y la retira tras 7 fallos seguidos, registrando `site_unverified` en `alerts`. Cambiar el dominio (otra `domain_key`) genera un token nuevo y deja el sitio sin verificar. Soporte: `pnpm site:verify <dominio|id> [--staff | --clear]` comprueba, marca verificado por staff (no se revisa) o retira la verificación.
 
 **R-003 Control de gasto**
 - EL SISTEMA DEBE registrar cada llamada a un proveedor de pago (proveedor, costo estimado, organización, sitio, job).
@@ -377,8 +378,9 @@ worker_heartbeat (worker_id, version, started_at, beat_at)        -- R-074
 
 sites          (id, organization_id, domain, domain_key, gsc_property, bing_site, city, lat, lng,
                 locale, country, business_name, street_address, postal_code, region, phone,
-                key_paths text[],
-                status active|paused, created_at, updated_at)
+                key_paths text[], status active|paused,
+                verification_token, verified_at, verification_method dns|meta|staff,
+                verification_failures, verification_checked_at, created_at, updated_at)
                 -- único (organization_id, domain_key); business_json se añade cuando un módulo lo use
 competitors    (id, site_id, name, name_key, aliases text[], domains text[], created_at, updated_at)
                 -- único (site_id, name_key)
@@ -489,6 +491,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [ ] T5.4 Verificación en la VPS sin exceder los límites de memoria.
 
 ### M6 — Colectores gratuitos (R-010, R-011, R-012)
+- [x] T6.0 Verificación de propiedad del sitio (DNS TXT o meta tag) antes de importar datos.
 - [ ] T6.1 Service account + cliente GSC + job diario idempotente.
 - [ ] T6.2 Cliente Bing + job diario.
 - [ ] T6.3 Resolver Q1/Q2 e importar datos de IA si existen.

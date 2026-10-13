@@ -1,7 +1,7 @@
 // Sitios por organización (R-002, R-005). Toda consulta lleva `organizationId`: un sitio de
 // otra organización es indistinguible de uno inexistente.
 import { randomUUID } from 'node:crypto'
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, sql } from 'drizzle-orm'
 import { db } from '~/db/client'
 import { isUniqueViolation } from '~/db/errors'
 import { sites, type Site } from '~/db/schema'
@@ -53,10 +53,22 @@ export async function updateSite(
   id: string,
   data: SiteData,
 ): Promise<Site | null> {
+  const key = domainKey(data.domain)
+  // Otro dominio = otro dueño posible: token nuevo y verificación desde cero (SPEC R-002).
+  const sameDomain = sql`${sites.domainKey} = ${key}`
   try {
     const [site] = await db
       .update(sites)
-      .set({ ...data, domainKey: domainKey(data.domain) })
+      .set({
+        ...data,
+        domainKey: key,
+        verificationToken: sql`case when ${sameDomain} then ${sites.verificationToken}
+          else replace(gen_random_uuid()::text, '-', '') end`,
+        verifiedAt: sql`case when ${sameDomain} then ${sites.verifiedAt} end`,
+        verificationMethod: sql`case when ${sameDomain} then ${sites.verificationMethod} end`,
+        verificationFailures: sql`case when ${sameDomain} then ${sites.verificationFailures} else 0 end`,
+        verificationCheckedAt: sql`case when ${sameDomain} then ${sites.verificationCheckedAt} end`,
+      })
       .where(scoped(organizationId, id))
       .returning()
     return site ?? null
