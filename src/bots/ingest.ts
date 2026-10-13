@@ -18,6 +18,7 @@ import {
 } from '~/domain/logs'
 import type { Logger } from '~/lib/logger'
 import { loadBotRules } from '~/server/bots'
+import { verificationsFor } from '~/bots/verify'
 
 /** Bytes de log que lee una pasada como máximo (acota tiempo y memoria; el resto, otra pasada). */
 const PASS_BYTES = 50 * 1024 * 1024
@@ -259,6 +260,11 @@ async function readInto(
     if (offset === cursor.offset && hits.length === 0) return
     const batch = hits
     hits = []
+    // Verificación (R-021) antes de la transacción: puede consultar DNS.
+    if (batch.length > 0) {
+      const statusOf = await verificationsFor(batch)
+      for (const hit of batch) hit.verified = statusOf(hit)
+    }
     cursor = await db.transaction(async (tx) => {
       const moved = await moveCursor(tx, cursor, { offset })
       if (batch.length > 0) await tx.insert(botHits).values(batch)

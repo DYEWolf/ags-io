@@ -157,6 +157,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 - Para bots con rangos IP publicados (p. ej. OpenAI), EL SISTEMA DEBE verificar contra listas actualizadas diariamente.
 - Para Googlebot y Bingbot, EL SISTEMA DEBE verificar con DNS inverso + DNS directo, con caché por IP.
 - CUANDO no exista método de verificación publicado, EL SISTEMA DEBE marcar el hit como `unverified`, nunca como verificado.
+- *Diseño (M7)*: métodos en `domain/bot-verification.ts`. **Listas** (formato JSON `prefixes`, descargadas por `bots.ranges` cada día a las 04:10 UTC y guardadas en `bot_ip_ranges`; una descarga fallida o vacía conserva la anterior y queda en `bot_range_sources.last_error`): Googlebot, Bingbot, Applebot, GPTBot, OAI-SearchBot, ChatGPT-User y OAI-AdsBot (una lista cada uno), ClaudeBot, Claude-User y Claude-SearchBot (una lista de Anthropic para los tres), PerplexityBot y Perplexity-User. **DNS inverso + directo** si la IP no está en la lista y el operador lo publica: Googlebot (`googlebot.com`, `google.com`), Bingbot (`search.msn.com`) y Applebot (`applebot.apple.com`); el nombre debe pertenecer al dominio (no basta con contenerlo) y resolver de vuelta a la misma IP. Caché por IP y bot en `ip_verifications`: verificado o fallido 7 días; un error de DNS (no concluyente) 1 hora. Estados: `verified`; `failed` (la IP no está en listas ya descargadas o el DNS no corresponde: suplantación); `unverified` (sin método publicado, o sin poder concluir: lista aún sin descargar, DNS caído). La ingesta verifica cada lote antes de guardarlo; el primer hit sin listas descargadas pide `bots.ranges`, que tras descargar revisa los hits guardados que no están verificados (90 días), igual que `bots.reclassify`. Las descargas usan un user-agent solo ASCII (Bing responde 500 con acentos). Staff → Bots muestra las listas y, por bot, verificados y suplantados de las últimas 24 h.
 
 **R-022 Métricas de bots**
 - EL SISTEMA DEBE mostrar por sitio y semana: hits por bot verificado, páginas más visitadas por bots de IA, y respuestas 4xx/5xx a bots.
@@ -417,7 +418,10 @@ log_cursors    (file, inode, inode_since, offset, draining, updated_at)
                 -- pk file (archivo activo); draining = rotado que se está terminando
 bot_rules      (id, pattern, kind bot|ignore, name, owner, category, created_by, created_at)
                 -- único lower(pattern); reglas de staff tras el catálogo de domain/bots.ts
-ip_verifications (ip, bot, verified, method, checked_at)
+ip_verifications (ip inet, bot, verified, method, hostname, checked_at, expires_at)
+                -- pk (ip, bot); caché del DNS inverso + directo
+bot_range_sources (source, url, prefixes, fetched_at, last_error, updated_at)
+bot_ip_ranges  (source, prefix inet)                     -- pk (source, prefix); índice gist
 
 audits         (id, site_id, trigger scheduled|manual, status queued|running|done|failed,
                 requested_by, created_at, started_at, finished_at, score, summary jsonb, error)
@@ -523,7 +527,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 ### M7 — Bots (R-020–R-023)
 - [x] T7.1 Montaje ro de logs + lector incremental con cursor.
 - [x] T7.2 Clasificador de user-agents (tabla configurable).
-- [ ] T7.3 Verificación: rangos publicados + DNS inverso con caché.
+- [x] T7.3 Verificación: rangos publicados + DNS inverso con caché.
 - [ ] T7.4 Agregados diarios, retención y vista de bots de IA.
 
 ### M8 — Auditor (R-030–R-034)

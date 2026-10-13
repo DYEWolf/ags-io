@@ -9,3 +9,10 @@ export const BOTS_RECLASSIFY_QUEUE = {
   policy: 'stately',
   config: { expireInSeconds: 30 * 60 },
 } satisfies QueueDefinition
+
+/** Descarga diaria de las listas de IPs de los bots y revisión de los hits sin verificar (R-021). */
+export const BOTS_RANGES_QUEUE = {
+  name: 'bots.ranges',
+  policy: 'stately',
+  config: { expireInSeconds: 30 * 60 },
+} satisfies QueueDefinition

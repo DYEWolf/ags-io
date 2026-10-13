@@ -2,7 +2,7 @@
 import { asc, count, desc, eq, gt, max, sql } from 'drizzle-orm'
 import { db } from '~/db/client'
 import { isUniqueViolation } from '~/db/errors'
-import { botHits, botRules, logCursors } from '~/db/schema'
+import { botHits, botRangeSources, botRules, logCursors } from '~/db/schema'
 import { botRuleInputSchema, createClassifier, type BotRule } from '~/domain/bots'
 import { logger } from '~/lib/logger'
 
@@ -102,12 +102,14 @@ export async function reclassifyHits(): Promise<{
 /** Estado de la ingesta para staff: archivos leídos y hits de las últimas 24 h por bot. */
 export async function ingestStatus() {
   const since = new Date(Date.now() - 24 * 3_600_000)
-  const [cursors, lastDay, totals] = await Promise.all([
+  const [cursors, lastDay, totals, sources] = await Promise.all([
     db.select().from(logCursors).orderBy(asc(logCursors.file)),
     db
       .select({
         bot: botHits.bot,
         hits: count(),
+        verified: sql<number>`count(*) filter (where ${botHits.verified} = 'verified')::int`,
+        failed: sql<number>`count(*) filter (where ${botHits.verified} = 'failed')::int`,
         hosts: sql<number>`count(distinct ${botHits.host})::int`,
       })
       .from(botHits)
@@ -115,10 +117,12 @@ export async function ingestStatus() {
       .groupBy(botHits.bot)
       .orderBy(desc(count())),
     db.select({ hits: count(), last: max(botHits.ts) }).from(botHits),
+    db.select().from(botRangeSources).orderBy(asc(botRangeSources.source)),
   ])
   return {
     cursors,
     lastDay,
+    sources,
     stored: totals[0]?.hits ?? 0,
     lastHitAt: totals[0]?.last ?? null,
   }

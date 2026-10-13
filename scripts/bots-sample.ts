@@ -86,7 +86,7 @@ const AGENTS: readonly Agent[] = [
   },
   {
     ua: 'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot',
-    ips: ['23.98.142.180', '40.84.180.230'],
+    ips: ['23.98.142.180', '104.210.139.196'],
     weight: 3,
   },
   {

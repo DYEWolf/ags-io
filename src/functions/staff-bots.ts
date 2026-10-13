@@ -17,7 +17,16 @@ export interface StaffBotsView {
     createdAt: string
   }[]
   cursors: { file: string; offset: number; draining: string | null; updatedAt: string }[]
-  lastDay: { bot: string; hits: number; hosts: number }[]
+  lastDay: { bot: string; hits: number; verified: number; failed: number; hosts: number }[]
+  sources: {
+    source: string
+    url: string
+    prefixes: number
+    fetchedAt: string | null
+    lastError: string | null
+  }[]
+  /** Bots que tienen método de verificación publicado (R-021). */
+  verifiable: string[]
   stored: number
   lastHitAt: string | null
 }
@@ -26,6 +35,7 @@ export const staffBotsOverview = createServerFn({ method: 'GET' })
   .middleware([staffMiddleware])
   .handler(async (): Promise<StaffBotsView> => {
     const { LOG_BOTS } = await import('~/domain/bots')
+    const { VERIFICATION } = await import('~/domain/bot-verification')
     const { ingestStatus, loadBotRules } = await import('~/server/bots')
     const [rules, status] = await Promise.all([loadBotRules(), ingestStatus()])
     return {
@@ -38,6 +48,14 @@ export const staffBotsOverview = createServerFn({ method: 'GET' })
         updatedAt: cursor.updatedAt.toISOString(),
       })),
       lastDay: status.lastDay,
+      sources: status.sources.map((source) => ({
+        source: source.source,
+        url: source.url,
+        prefixes: source.prefixes,
+        fetchedAt: source.fetchedAt?.toISOString() ?? null,
+        lastError: source.lastError,
+      })),
+      verifiable: Object.keys(VERIFICATION),
       stored: status.stored,
       lastHitAt: status.lastHitAt?.toISOString() ?? null,
     }

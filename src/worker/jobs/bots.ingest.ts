@@ -1,5 +1,7 @@
 import { ingestLogs } from '~/bots/ingest'
+import { rangesLoaded } from '~/bots/verify'
 import { env } from '~/lib/env'
+import { BOTS_RANGES_QUEUE } from '~/queue/bots'
 import { defineJob } from '~/worker/queue'
 
 /**
@@ -19,5 +21,7 @@ export const botsIngestJob = defineJob({
       log.info({ ...result, ms: Date.now() - started }, 'logs de Caddy leídos')
     }
     if (result.more) await boss.send('bots.ingest', {})
+    // Primer arranque: sin listas de IPs los hits quedan sin verificar hasta el cron diario.
+    if (result.hits > 0 && !(await rangesLoaded())) await boss.send(BOTS_RANGES_QUEUE.name, {})
   },
 })

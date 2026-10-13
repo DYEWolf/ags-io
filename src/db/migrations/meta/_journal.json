@@ -120,6 +120,13 @@
       "when": 1791924294975,
       "tag": "0016_bot_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791924864055,
+      "tag": "0017_bot_verification",
+      "breakpoints": true
     }
   ]
 }

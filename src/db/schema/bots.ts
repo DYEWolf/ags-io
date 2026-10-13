@@ -8,6 +8,7 @@ import {
   inet,
   integer,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -97,6 +98,61 @@ export const botRules = pgTable(
     check(
       'bot_rules_bot_check',
       sql`${table.kind} = 'ignore' or (${table.name} is not null and ${table.category} is not null)`,
+    ),
+  ],
+)
+
+/**
+ * Listas de rangos IP publicadas por los operadores de bots (R-021), descargadas cada día por
+ * `bots.ranges`. Una descarga fallida o vacía conserva la lista anterior (`last_error`).
+ */
+export const botRangeSources = pgTable('bot_range_sources', {
+  source: text('source').primaryKey(),
+  url: text('url').notNull(),
+  prefixes: integer('prefixes').notNull().default(0),
+  fetchedAt: tstz('fetched_at'),
+  lastError: text('last_error'),
+  updatedAt: tstz('updated_at')
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+})
+
+/** Prefijos de cada lista (`inet` acepta prefijos con bits de host, como algunas listas). */
+export const botIpRanges = pgTable(
+  'bot_ip_ranges',
+  {
+    source: text('source')
+      .notNull()
+      .references(() => botRangeSources.source, { onDelete: 'cascade' }),
+    prefix: inet('prefix').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.source, table.prefix] }),
+    index('bot_ip_ranges_prefix_idx').using('gist', sql`${table.prefix} inet_ops`),
+  ],
+)
+
+/**
+ * Caché de la verificación por DNS inverso + directo (R-021) por IP y bot: verificado o fallido
+ * una semana; un error de DNS (no concluyente) una hora, mientras tanto el hit queda `unverified`.
+ */
+export const ipVerifications = pgTable(
+  'ip_verifications',
+  {
+    ip: inet('ip').notNull(),
+    bot: text('bot').notNull(),
+    verified: text('verified').$type<BotVerification>().notNull(),
+    method: text('method').notNull(),
+    hostname: text('hostname'),
+    checkedAt: tstz('checked_at').notNull().defaultNow(),
+    expiresAt: tstz('expires_at').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ip, table.bot] }),
+    check(
+      'ip_verifications_verified_check',
+      sql`${table.verified} in ('verified', 'failed', 'unverified')`,
     ),
   ],
 )

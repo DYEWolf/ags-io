@@ -24,6 +24,7 @@ function BotsPage() {
   return (
     <div className="flex flex-col gap-6">
       <IngestCard view={view} />
+      <RangesCard view={view} />
       <RulesCard view={view} />
       <section className="flex flex-col gap-2">
         <h2 className="text-base font-semibold">Catálogo</h2>
@@ -90,20 +91,80 @@ function IngestCard({ view }: { view: StaffBotsView }) {
           {view.lastDay.length === 0 ? (
             <p className="text-sm text-neutral-500">Ningún hit de bots.</p>
           ) : (
-            <Table head={['Bot', 'Hits', 'Hosts']}>
-              {view.lastDay.map((row) => (
-                <tr key={row.bot}>
-                  <td className="px-4 py-2">
-                    {row.bot === 'other' ? 'Otros (sin catalogar)' : row.bot}
-                  </td>
-                  <td className="px-4 py-2 tabular-nums">{integer.format(row.hits)}</td>
-                  <td className="px-4 py-2 tabular-nums">{row.hosts}</td>
-                </tr>
-              ))}
+            <Table head={['Bot', 'Hits', 'Verificados', 'Suplantados', 'Hosts']}>
+              {view.lastDay.map((row) => {
+                const verifiable = view.verifiable.includes(row.bot)
+                return (
+                  <tr key={row.bot}>
+                    <td className="px-4 py-2">
+                      {row.bot === 'other' ? 'Otros (sin catalogar)' : row.bot}
+                    </td>
+                    <td className="px-4 py-2 tabular-nums">{integer.format(row.hits)}</td>
+                    <td className="px-4 py-2 tabular-nums">
+                      {verifiable ? integer.format(row.verified) : 'sin método'}
+                    </td>
+                    <td className="px-4 py-2 tabular-nums">
+                      {verifiable ? (
+                        row.failed > 0 ? (
+                          <Badge tone="red">{integer.format(row.failed)}</Badge>
+                        ) : (
+                          '0'
+                        )
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="px-4 py-2 tabular-nums">{row.hosts}</td>
+                  </tr>
+                )
+              })}
             </Table>
           )}
         </div>
       </div>
+    </Card>
+  )
+}
+
+function RangesCard({ view }: { view: StaffBotsView }) {
+  return (
+    <Card
+      title="Verificación"
+      description="Listas de IPs que publican los operadores, descargadas cada día a las 04:10 UTC. Googlebot, Bingbot y Applebot se comprueban además por DNS inverso + directo (caché de una semana). Un bot sin método publicado nunca cuenta como verificado."
+    >
+      {view.sources.length === 0 ? (
+        <Alert tone="warning">
+          Aún no se ha descargado ninguna lista: se piden con el primer hit de un bot.
+        </Alert>
+      ) : (
+        <Table head={['Lista', 'Prefijos', 'Descargada', 'Estado']}>
+          {view.sources.map((source) => (
+            <tr key={source.source}>
+              <td className="px-4 py-2">
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="underline"
+                >
+                  {source.source}
+                </a>
+              </td>
+              <td className="px-4 py-2 tabular-nums">{source.prefixes}</td>
+              <td className="px-4 py-2 whitespace-nowrap">
+                {source.fetchedAt ? dateTimeFormat.format(new Date(source.fetchedAt)) : 'nunca'}
+              </td>
+              <td className="px-4 py-2">
+                {source.lastError ? (
+                  <Badge tone="amber">Último intento falló: {source.lastError}</Badge>
+                ) : (
+                  <Badge tone="green">Al día</Badge>
+                )}
+              </td>
+            </tr>
+          ))}
+        </Table>
+      )}
     </Card>
   )
 }
