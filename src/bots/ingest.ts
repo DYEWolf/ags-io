@@ -8,7 +8,7 @@ import { createGunzip } from 'node:zlib'
 import { and, eq, isNull } from 'drizzle-orm'
 import { db } from '~/db/client'
 import { botHits, logCursors } from '~/db/schema'
-import { classifyUserAgent } from '~/domain/bots'
+import { createClassifier } from '~/domain/bots'
 import {
   isActiveLogName,
   MAX_LINE_BYTES,
@@ -17,6 +17,7 @@ import {
   type RotatedName,
 } from '~/domain/logs'
 import type { Logger } from '~/lib/logger'
+import { loadBotRules } from '~/server/bots'
 
 /** Bytes de log que lee una pasada como máximo (acota tiempo y memoria; el resto, otra pasada). */
 const PASS_BYTES = 50 * 1024 * 1024
@@ -45,6 +46,7 @@ class CursorMoved extends Error {}
 
 interface Pass {
   dir: string
+  classify: (ua: string) => string | null
   log: Logger
   budget: number
   result: IngestResult
@@ -75,7 +77,9 @@ export async function ingestLogs(dir: string, log: Logger): Promise<IngestResult
     list.sort((a, b) => a.rotatedAt.getTime() - b.rotatedAt.getTime())
   }
 
-  const pass: Pass = { dir, log, budget: PASS_BYTES, result }
+  // Reglas de staff leídas una vez por pasada.
+  const classify = createClassifier(await loadBotRules())
+  const pass: Pass = { dir, classify, log, budget: PASS_BYTES, result }
   for (const name of names.filter(isActiveLogName).sort()) {
     if (pass.budget <= 0) {
       result.more = true
@@ -273,7 +277,7 @@ async function readInto(
       pass.result.invalid += 1
       return
     }
-    const bot = classifyUserAgent(entry.ua)
+    const bot = pass.classify(entry.ua)
     if (bot) hits.push({ ...entry, bot })
   }
 

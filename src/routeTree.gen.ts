@@ -29,6 +29,7 @@ import { Route as AppSitiosIndexRouteImport } from './routes/_app/sitios/index'
 import { Route as AppSitiosSiteIdRouteRouteImport } from './routes/_app/sitios/$siteId/route'
 import { Route as AppSitiosNuevoRouteImport } from './routes/_app/sitios/nuevo'
 import { Route as AppStaffIndexRouteImport } from './routes/_app/staff/index'
+import { Route as AppStaffBotsRouteImport } from './routes/_app/staff/bots'
 import { Route as AppStaffGastoRouteImport } from './routes/_app/staff/gasto'
 import { Route as AppStaffJobsRouteImport } from './routes/_app/staff/jobs'
 import { Route as AppStaffOrganizacionesRouteImport } from './routes/_app/staff/organizaciones'
@@ -145,6 +146,11 @@ const AppStaffIndexRoute = AppStaffIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppStaffRouteRoute,
 } as any)
+const AppStaffBotsRoute = AppStaffBotsRouteImport.update({
+  id: '/bots',
+  path: '/bots',
+  getParentRoute: () => AppStaffRouteRoute,
+} as any)
 const AppStaffGastoRoute = AppStaffGastoRouteImport.update({
   id: '/gasto',
   path: '/gasto',
@@ -255,6 +261,7 @@ export interface FileRoutesByFullPath {
   '/sitios/$siteId': typeof AppSitiosSiteIdRouteRouteWithChildren
   '/cuenta/seguridad': typeof AppCuentaSeguridadRoute
   '/sitios/nuevo': typeof AppSitiosNuevoRoute
+  '/staff/bots': typeof AppStaffBotsRoute
   '/staff/gasto': typeof AppStaffGastoRoute
   '/staff/jobs': typeof AppStaffJobsRoute
   '/staff/organizaciones': typeof AppStaffOrganizacionesRoute
@@ -289,6 +296,7 @@ export interface FileRoutesByTo {
   '/verifica-tu-correo': typeof AuthVerificaTuCorreoRoute
   '/cuenta/seguridad': typeof AppCuentaSeguridadRoute
   '/sitios/nuevo': typeof AppSitiosNuevoRoute
+  '/staff/bots': typeof AppStaffBotsRoute
   '/staff/gasto': typeof AppStaffGastoRoute
   '/staff/jobs': typeof AppStaffJobsRoute
   '/staff/organizaciones': typeof AppStaffOrganizacionesRoute
@@ -327,6 +335,7 @@ export interface FileRoutesById {
   '/_app/sitios/$siteId': typeof AppSitiosSiteIdRouteRouteWithChildren
   '/_app/cuenta/seguridad': typeof AppCuentaSeguridadRoute
   '/_app/sitios/nuevo': typeof AppSitiosNuevoRoute
+  '/_app/staff/bots': typeof AppStaffBotsRoute
   '/_app/staff/gasto': typeof AppStaffGastoRoute
   '/_app/staff/jobs': typeof AppStaffJobsRoute
   '/_app/staff/organizaciones': typeof AppStaffOrganizacionesRoute
@@ -366,6 +375,7 @@ export interface FileRouteTypes {
     | '/sitios/$siteId'
     | '/cuenta/seguridad'
     | '/sitios/nuevo'
+    | '/staff/bots'
     | '/staff/gasto'
     | '/staff/jobs'
     | '/staff/organizaciones'
@@ -400,6 +410,7 @@ export interface FileRouteTypes {
     | '/verifica-tu-correo'
     | '/cuenta/seguridad'
     | '/sitios/nuevo'
+    | '/staff/bots'
     | '/staff/gasto'
     | '/staff/jobs'
     | '/staff/organizaciones'
@@ -437,6 +448,7 @@ export interface FileRouteTypes {
     | '/_app/sitios/$siteId'
     | '/_app/cuenta/seguridad'
     | '/_app/sitios/nuevo'
+    | '/_app/staff/bots'
     | '/_app/staff/gasto'
     | '/_app/staff/jobs'
     | '/_app/staff/organizaciones'
@@ -609,6 +621,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStaffIndexRouteImport
       parentRoute: typeof AppStaffRouteRoute
     }
+    '/_app/staff/bots': {
+      id: '/_app/staff/bots'
+      path: '/bots'
+      fullPath: '/staff/bots'
+      preLoaderRoute: typeof AppStaffBotsRouteImport
+      parentRoute: typeof AppStaffRouteRoute
+    }
     '/_app/staff/gasto': {
       id: '/_app/staff/gasto'
       path: '/gasto'
@@ -746,6 +765,7 @@ const AppCuentaRouteRouteWithChildren = AppCuentaRouteRoute._addFileChildren(
 )
 
 interface AppStaffRouteRouteChildren {
+  AppStaffBotsRoute: typeof AppStaffBotsRoute
   AppStaffGastoRoute: typeof AppStaffGastoRoute
   AppStaffJobsRoute: typeof AppStaffJobsRoute
   AppStaffOrganizacionesRoute: typeof AppStaffOrganizacionesRoute
@@ -753,6 +773,7 @@ interface AppStaffRouteRouteChildren {
 }
 
 const AppStaffRouteRouteChildren: AppStaffRouteRouteChildren = {
+  AppStaffBotsRoute: AppStaffBotsRoute,
   AppStaffGastoRoute: AppStaffGastoRoute,
   AppStaffJobsRoute: AppStaffJobsRoute,
   AppStaffOrganizacionesRoute: AppStaffOrganizacionesRoute,

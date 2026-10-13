@@ -1,7 +1,19 @@
 // Bots y logs (R-020–R-023): hits de bots leídos de los access logs de Caddy y el cursor de
 // lectura de cada archivo.
 import { sql } from 'drizzle-orm'
-import { bigint, check, index, inet, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import {
+  bigint,
+  check,
+  index,
+  inet,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core'
+import type { BotRuleKind, LogBotCategory } from '~/domain/bots'
+import { user } from './auth'
 
 const tstz = (name: string) => timestamp(name, { withTimezone: true, mode: 'date' })
 
@@ -61,3 +73,30 @@ export const logCursors = pgTable('log_cursors', {
     .defaultNow()
     .$onUpdate(() => new Date()),
 })
+
+/**
+ * Reglas de clasificación de staff (R-020, T7.2): bots que el catálogo de `domain/bots.ts` no
+ * conoce, o patrones que no son bots (`ignore`). Al cambiar, `bots.reclassify` recalcula los
+ * hits guardados (90 días); el tráfico que se descartó como persona no se recupera.
+ */
+export const botRules = pgTable(
+  'bot_rules',
+  {
+    id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
+    pattern: text('pattern').notNull(),
+    kind: text('kind').$type<BotRuleKind>().notNull(),
+    name: text('name'),
+    owner: text('owner'),
+    category: text('category').$type<LogBotCategory>(),
+    createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: tstz('created_at').notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('bot_rules_pattern_idx').on(sql`lower(${table.pattern})`),
+    check('bot_rules_kind_check', sql`${table.kind} in ('bot', 'ignore')`),
+    check(
+      'bot_rules_bot_check',
+      sql`${table.kind} = 'ignore' or (${table.name} is not null and ${table.category} is not null)`,
+    ),
+  ],
+)

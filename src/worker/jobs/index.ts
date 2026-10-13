@@ -4,6 +4,7 @@ import { auditScheduleJob } from '~/worker/jobs/audit.schedule'
 import { bingScheduleJob } from '~/worker/jobs/bing.schedule'
 import { bingSyncJob } from '~/worker/jobs/bing.sync'
 import { botsIngestJob } from '~/worker/jobs/bots.ingest'
+import { botsReclassifyJob } from '~/worker/jobs/bots.reclassify'
 import { authCleanupJob } from '~/worker/jobs/auth.cleanup'
 import { emailSendJob } from '~/worker/jobs/email.send'
 import { geoExtractJob } from '~/worker/jobs/geo.extract'
@@ -30,4 +31,5 @@ export const jobs: JobDefinition[] = [
   inspectionScheduleJob,
   inspectionRunJob,
   botsIngestJob,
+  botsReclassifyJob,
 ]

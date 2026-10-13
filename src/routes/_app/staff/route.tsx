@@ -53,6 +53,14 @@ function StaffLayout() {
         >
           Jobs
         </Link>
+        <Link
+          to="/staff/bots"
+          activeOptions={{ includeSearch: false }}
+          className={tabClass}
+          activeProps={{ className: tabActive }}
+        >
+          Bots
+        </Link>
       </nav>
       <Outlet />
     </div>
