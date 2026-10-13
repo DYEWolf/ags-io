@@ -41,7 +41,7 @@ Cuando el usuario pida empezar un módulo:
 
 ## Estado
 
-_Actualizado al terminar M10 (2026-10-12)._
+_Actualizado tras aprobar M10 (2026-10-12)._
 
 | Módulo | Estado | Notas |
 |---|---|---|
@@ -52,12 +52,10 @@ _Actualizado al terminar M10 (2026-10-12)._
 | M4 Gasto y operación | ✅ Aprobado | |
 | M5 Deploy y respaldos | ⏸ Bloqueado | Falta el dominio (Q6) y acceso SSH a la VPS |
 | M8 Auditor | ✅ Aprobado | Adelantado a M5–M7 porque no depende del dominio |
-| M10 GEO manual | 🧪 Listo para e2e | T10.1–T10.4 hechas; espera la aprobación del e2e del admin |
+| M10 GEO manual | ✅ Aprobado | |
 | M6, M7, M9, M11, M12 | Pendientes | |
 
-**M10 listo para e2e.** No empezar otro módulo sin la aprobación explícita del admin. Al aprobar: marcar M10 ✅ y commit `docs(repo): estado tras aprobar M10`.
-
-**Siguiente recomendado**: M11 GEO automático (requiere decidir Q3 y una API key del motor) o, si llegan antes los accesos, M6 Colectores. M5 sigue bloqueado por el dominio.
+**Siguiente recomendado**: M11 GEO automático ("empieza módulo M11"; requiere decidir Q3 y una API key del motor) o, si llegan antes los accesos, M6 Colectores. M5 sigue bloqueado por el dominio.
 
 Hallazgos de M10 útiles para quien siga:
 
