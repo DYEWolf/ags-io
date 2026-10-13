@@ -99,3 +99,56 @@ export const gscTotalsDaily = pgTable(
   },
   (table) => [primaryKey({ columns: [table.siteId, table.date, table.country, table.device] })],
 )
+
+/** Columnas comunes de las estadísticas de Bing (consulta o página). */
+const bingStats = () => ({
+  clicks: integer('clicks').notNull(),
+  impressions: integer('impressions').notNull(),
+  avgClickPosition: doublePrecision('avg_click_position').notNull(),
+  avgImpressionPosition: doublePrecision('avg_impression_position').notNull(),
+})
+
+/**
+ * Consultas de Bing (R-011) por fecha. Bing entrega su historial reciente completo en cada
+ * llamada (con su propia granularidad de fechas): se reemplaza desde la fecha más antigua recibida.
+ */
+export const bingDaily = pgTable(
+  'bing_daily',
+  {
+    siteId: text('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    date: day('date').notNull(),
+    query: text('query').notNull(),
+    ...bingStats(),
+  },
+  (table) => [primaryKey({ columns: [table.siteId, table.date, table.query] })],
+)
+
+/** Páginas de Bing por fecha (misma forma que las consultas). */
+export const bingPageDaily = pgTable(
+  'bing_page_daily',
+  {
+    siteId: text('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    date: day('date').notNull(),
+    page: text('page').notNull(),
+    ...bingStats(),
+  },
+  (table) => [primaryKey({ columns: [table.siteId, table.date, table.page] })],
+)
+
+/** Clics e impresiones totales del sitio en Bing por día. */
+export const bingTotalsDaily = pgTable(
+  'bing_totals_daily',
+  {
+    siteId: text('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    date: day('date').notNull(),
+    clicks: integer('clicks').notNull(),
+    impressions: integer('impressions').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.siteId, table.date] })],
+)

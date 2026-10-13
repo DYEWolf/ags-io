@@ -1,6 +1,8 @@
 import type { JobDefinition } from '~/worker/queue'
 import { auditRunJob } from '~/worker/jobs/audit.run'
 import { auditScheduleJob } from '~/worker/jobs/audit.schedule'
+import { bingScheduleJob } from '~/worker/jobs/bing.schedule'
+import { bingSyncJob } from '~/worker/jobs/bing.sync'
 import { authCleanupJob } from '~/worker/jobs/auth.cleanup'
 import { emailSendJob } from '~/worker/jobs/email.send'
 import { geoExtractJob } from '~/worker/jobs/geo.extract'
@@ -20,4 +22,6 @@ export const jobs: JobDefinition[] = [
   siteVerifyJob,
   gscScheduleJob,
   gscSyncJob,
+  bingScheduleJob,
+  bingSyncJob,
 ]

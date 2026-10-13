@@ -137,6 +137,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 **R-011 Bing Webmaster Tools**
 - EL SISTEMA DEBE importar diariamente las métricas de búsqueda por sitio vía API key.
 - SI la API expone AI Performance (citas, páginas citadas, grounding queries), EL SISTEMA DEBE importarlo (Q2).
+- *Diseño (M6)*: API key de la cuenta de Bing de la plataforma (`BING_WEBMASTER_API_KEY`; `BING_ACCOUNT_EMAIL` es el usuario que el cliente añade en su sitio, con rol de solo lectura, y lo muestra Ajustes). Mismas condiciones que GSC: activo, verificado (R-002) y con sitio de Bing. `bing.schedule` (10:40 UTC) encola `bing.sync` (política `stately` por sitio, también desde «Importar ahora»). Cada pasada pide `GetQueryStats`, `GetPageStats` y `GetRankAndTrafficStats`, que devuelven el historial reciente completo de Bing con su propia granularidad de fechas; las fechas WCF (`/Date(ms-0700)/`) se convierten al día de su desfase (hora del Pacífico). Consultas (`bing_daily`) y páginas (`bing_page_daily`) se reemplazan desde la fecha más antigua recibida; los totales (`bing_totals_daily`) se actualizan por día y nunca se borran. Una respuesta vacía no borra nada. ApiErrorCode 7/11/13/14 (p. ej. `NotAuthorized`) → «sin acceso»; 1/2/4/5 y 5xx → reintento; `InvalidApiKey` → error. Cambiar el sitio de Bing borra sus datos. Bing acepta la URL con o sin `www.` y con http o https para el mismo sitio.
 
 **R-012 Estado de indexación**
 - EL SISTEMA DEBE verificar semanalmente, con la URL Inspection API de GSC, el estado de indexación de las URLs del sitemap de cada sitio, respetando la cuota de la API.
@@ -395,7 +396,11 @@ gsc_daily      (site_id, date, query, page, country, device, clicks, impressions
 gsc_totals_daily (site_id, date, country, device, clicks, impressions, ctr, position)
                 -- pk (site_id, date, country, device); agregado por propiedad
 gsc_ai_daily   (site_id, date, ... )                      -- si Q1 = sí
-bing_daily     (site_id, date, query, clicks, impressions, position)
+bing_daily     (site_id, date, query, clicks, impressions, avg_click_position,
+                avg_impression_position)                -- pk (site_id, date, query)
+bing_page_daily (site_id, date, page, clicks, impressions, avg_click_position,
+                avg_impression_position)                -- pk (site_id, date, page)
+bing_totals_daily (site_id, date, clicks, impressions)  -- pk (site_id, date)
 bing_ai_daily  (site_id, date, citations, page, grounding_query) -- si Q2 = sí
 index_status   (site_id, url, checked_at, verdict, coverage_state)
 
@@ -500,7 +505,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 ### M6 — Colectores gratuitos (R-010, R-011, R-012)
 - [x] T6.0 Verificación de propiedad del sitio (DNS TXT o meta tag) antes de importar datos.
 - [x] T6.1 Service account + cliente GSC + job diario idempotente.
-- [ ] T6.2 Cliente Bing + job diario.
+- [x] T6.2 Cliente Bing + job diario.
 - [ ] T6.3 Resolver Q1/Q2 e importar datos de IA si existen.
 - [ ] T6.4 Job semanal de URL Inspection con respeto de cuota.
 - [ ] T6.5 Vistas del dashboard: tendencias por sitio.

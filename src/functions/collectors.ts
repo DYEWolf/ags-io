@@ -27,7 +27,10 @@ export interface CollectorView {
 export interface SearchConnectionsView {
   /** Email de la service account que el cliente añade en Search Console. */
   serviceAccountEmail: string | null
+  /** Email de la cuenta de Bing Webmaster que el cliente añade como usuario de su sitio. */
+  bingAccountEmail: string | null
   gsc: CollectorView
+  bing: CollectorView
 }
 
 const siteIdSchema = z.object({ siteId: z.string().min(1).max(64) })
@@ -46,6 +49,7 @@ export const getSearchConnections = createServerFn({ method: 'GET' })
     const site = await siteFor(context.organizationId, data.siteId)
     const { listCollectorStates } = await import('~/server/collectors')
     const { serviceAccountEmail } = await import('~/providers/google-auth')
+    const { env } = await import('~/lib/env')
     const states = await listCollectorStates(site.id)
     const view = (source: CollectorSource, property: string | null): CollectorView => {
       const state = states.find((row) => row.source === source)
@@ -65,20 +69,25 @@ export const getSearchConnections = createServerFn({ method: 'GET' })
           : null,
       }
     }
-    return { serviceAccountEmail: serviceAccountEmail(), gsc: view('gsc', site.gscProperty) }
+    return {
+      serviceAccountEmail: serviceAccountEmail(),
+      bingAccountEmail: env.BING_ACCOUNT_EMAIL ?? null,
+      gsc: view('gsc', site.gscProperty),
+      bing: view('bing', site.bingSite),
+    }
   })
 
 export type RequestSyncResult = { ok: true; queued: boolean } | { ok: false; error: string }
 
 /** "Importar ahora": encola la importación (si ya hay una en cola, no se duplica). */
-export const requestGscSync = createServerFn({ method: 'POST' })
+export const requestCollectorSync = createServerFn({ method: 'POST' })
   .middleware([organizationMiddleware])
-  .validator(siteIdSchema)
+  .validator(siteIdSchema.extend({ source: z.enum(['gsc', 'bing']) }))
   .handler(async ({ context, data }): Promise<RequestSyncResult> => {
     assertCanManage(context.organizationRole)
     const site = await siteFor(context.organizationId, data.siteId)
-    const blocker = collectorBlocker(site, site.gscProperty)
+    const blocker = collectorBlocker(site, data.source === 'gsc' ? site.gscProperty : site.bingSite)
     if (blocker) return { ok: false, error: BLOCKER_LABELS[blocker] }
-    const { enqueueGscSync } = await import('~/server/queue')
-    return { ok: true, queued: await enqueueGscSync(site.id) }
+    const { enqueueCollectorSync } = await import('~/server/queue')
+    return { ok: true, queued: await enqueueCollectorSync(data.source, site.id) }
   })

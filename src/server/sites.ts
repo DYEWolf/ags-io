@@ -7,7 +7,7 @@ import { isUniqueViolation } from '~/db/errors'
 import { sites, type Site } from '~/db/schema'
 import { domainKey, siteAllowsPaidWork, type SiteData, type SiteStatus } from '~/domain/sites'
 import { logger } from '~/lib/logger'
-import { purgeGscData } from '~/server/collectors'
+import { purgeBingData, purgeGscData } from '~/server/collectors'
 
 const log = logger.child({ component: 'sites' })
 
@@ -60,7 +60,7 @@ export async function updateSite(
   try {
     return await db.transaction(async (tx) => {
       const [previous] = await tx
-        .select({ gscProperty: sites.gscProperty })
+        .select({ gscProperty: sites.gscProperty, bingSite: sites.bingSite })
         .from(sites)
         .where(scoped(organizationId, id))
         .for('update')
@@ -84,6 +84,10 @@ export async function updateSite(
       if (previous.gscProperty !== site.gscProperty) {
         await purgeGscData(site.id, tx)
         log.info({ organizationId, siteId: id }, 'propiedad de GSC cambiada: datos borrados')
+      }
+      if (previous.bingSite !== site.bingSite) {
+        await purgeBingData(site.id, tx)
+        log.info({ organizationId, siteId: id }, 'sitio de Bing cambiado: datos borrados')
       }
       return site
     })

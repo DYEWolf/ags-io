@@ -16,6 +16,10 @@ const csv = z
       .filter(Boolean),
   )
 
+/** `VAR=` vacío en `.env` cuenta como no definida (como en `.env.example`). */
+const blankAsUndefined = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (value === '' ? undefined : value), schema)
+
 const serviceAccountSchema = z.object({
   type: z.literal('service_account'),
   client_email: z.email(),
@@ -64,11 +68,8 @@ const schema = z
     PAGESPEED_API_KEY: z.string().min(1).optional(),
 
     // Search Console (R-010, R-012): JSON de la service account en base64. Sin ella no se importa.
-    GOOGLE_SERVICE_ACCOUNT_KEY: z
-      .string()
-      .min(1)
-      .optional()
-      .transform((value, ctx) => {
+    GOOGLE_SERVICE_ACCOUNT_KEY: blankAsUndefined(z.string().min(1).optional()).transform(
+      (value, ctx) => {
         if (!value) return undefined
         const parsed = serviceAccountSchema.safeParse(decodeJson(value))
         if (!parsed.success) {
@@ -76,7 +77,12 @@ const schema = z
           return z.NEVER
         }
         return parsed.data
-      }),
+      },
+    ),
+    // Bing Webmaster (R-011): API key de la cuenta de la plataforma y su email (el que los
+    // clientes añaden como usuario de su sitio en Bing). Sin key no se importa.
+    BING_WEBMASTER_API_KEY: blankAsUndefined(z.string().min(1).optional()),
+    BING_ACCOUNT_EMAIL: blankAsUndefined(z.email().optional()),
   })
   .superRefine((value, ctx) => {
     if (value.EMAIL_PROVIDER === 'resend' && !value.RESEND_API_KEY) {

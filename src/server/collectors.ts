@@ -2,6 +2,9 @@
 import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '~/db/client'
 import {
+  bingDaily,
+  bingPageDaily,
+  bingTotalsDaily,
   collectorState,
   gscDaily,
   gscTotalsDaily,
@@ -70,4 +73,14 @@ export async function saveCollectorState(
     .insert(collectorState)
     .values({ siteId, source, ...set })
     .onConflictDoUpdate({ target: [collectorState.siteId, collectorState.source], set })
+}
+
+/** Borra los datos de Bing del sitio (cambió el sitio de Bing o el dominio). */
+export async function purgeBingData(siteId: string, executor: Executor = db): Promise<void> {
+  await executor.delete(bingDaily).where(eq(bingDaily.siteId, siteId))
+  await executor.delete(bingPageDaily).where(eq(bingPageDaily.siteId, siteId))
+  await executor.delete(bingTotalsDaily).where(eq(bingTotalsDaily.siteId, siteId))
+  await executor
+    .delete(collectorState)
+    .where(and(eq(collectorState.siteId, siteId), eq(collectorState.source, 'bing')))
 }

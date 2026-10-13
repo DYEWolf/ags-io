@@ -12,6 +12,13 @@ export const GSC_SYNC_QUEUE = {
   config: { expireInSeconds: 30 * 60 },
 } satisfies QueueDefinition
 
+/** Importación de Bing Webmaster de un sitio (R-011), con la misma política. */
+export const BING_SYNC_QUEUE = {
+  name: 'bing.sync',
+  policy: 'stately',
+  config: { expireInSeconds: 15 * 60 },
+} satisfies QueueDefinition
+
 export const siteJobSchema = z.object({ siteId: z.string().min(1).max(64) })
 
 export type SiteJobData = z.infer<typeof siteJobSchema>

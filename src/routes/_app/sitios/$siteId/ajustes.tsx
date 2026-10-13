@@ -13,7 +13,7 @@ import {
 } from '~/domain/verification'
 import {
   getSearchConnections,
-  requestGscSync,
+  requestCollectorSync,
   type CollectorView,
   type RequestSyncResult,
 } from '~/functions/collectors'
@@ -45,6 +45,8 @@ function SitePage() {
       <VerificationCard />
 
       <GscCard />
+
+      <BingCard />
 
       <Card title="Datos del sitio">
         <div className="flex flex-col gap-4">
@@ -287,10 +289,9 @@ function CollectorStatusBlock({ collector }: { collector: CollectorView }) {
   )
 }
 
-function GscCard() {
+function SyncButton({ source, blocked }: { source: 'gsc' | 'bing'; blocked: boolean }) {
   const router = useRouter()
   const site = siteRoute.useLoaderData()
-  const connections = Route.useLoaderData()
   const [pending, setPending] = useState(false)
   const [result, setResult] = useState<RequestSyncResult | null>(null)
 
@@ -298,7 +299,7 @@ function GscCard() {
     setPending(true)
     setResult(null)
     try {
-      setResult(await requestGscSync({ data: { siteId: site.id } }))
+      setResult(await requestCollectorSync({ data: { siteId: site.id, source } }))
       await router.invalidate()
     } catch {
       setResult({ ok: false, error: 'No se pudo encolar la importación. Inténtalo de nuevo.' })
@@ -306,6 +307,34 @@ function GscCard() {
       setPending(false)
     }
   }
+
+  return (
+    <>
+      {result?.ok === false ? <Alert tone="error">{result.error}</Alert> : null}
+      {result?.ok ? (
+        <Alert tone="success">
+          {result.queued
+            ? 'Importación encolada. Recarga en unos minutos para ver el estado.'
+            : 'Ya hay una importación en cola.'}
+        </Alert>
+      ) : null}
+      <div>
+        <Button
+          variant="secondary"
+          pending={pending}
+          disabled={blocked}
+          onClick={() => void sync()}
+        >
+          Importar ahora
+        </Button>
+      </div>
+    </>
+  )
+}
+
+function GscCard() {
+  const site = siteRoute.useLoaderData()
+  const connections = Route.useLoaderData()
 
   return (
     <Card
@@ -334,25 +363,46 @@ function GscCard() {
         </div>
 
         <CollectorStatusBlock collector={connections.gsc} />
+        <SyncButton source="gsc" blocked={connections.gsc.blocker !== null} />
+      </div>
+    </Card>
+  )
+}
 
-        {result?.ok === false ? <Alert tone="error">{result.error}</Alert> : null}
-        {result?.ok ? (
-          <Alert tone="success">
-            {result.queued
-              ? 'Importación encolada. Recarga en unos minutos para ver el estado.'
-              : 'Ya hay una importación en cola.'}
-          </Alert>
-        ) : null}
-        <div>
-          <Button
-            variant="secondary"
-            pending={pending}
-            disabled={connections.gsc.blocker !== null}
-            onClick={() => void sync()}
-          >
-            Importar ahora
-          </Button>
+function BingCard() {
+  const site = siteRoute.useLoaderData()
+  const connections = Route.useLoaderData()
+
+  return (
+    <Card
+      title="Bing Webmaster"
+      description="Clics, impresiones y posición media en Bing por consulta y por página, y el tráfico total por día. Se importa cada día el historial reciente que entrega Bing."
+    >
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2 text-sm">
+          <p className="font-medium">Cómo dar acceso</p>
+          <ol className="list-decimal pl-5 text-neutral-600">
+            <li>
+              En Bing Webmaster Tools, abre tu sitio → Configuración → Administración de usuarios.
+            </li>
+            <li>Añade este usuario con el rol «Solo lectura»:</li>
+          </ol>
+          {connections.bingAccountEmail ? (
+            <Code>{connections.bingAccountEmail}</Code>
+          ) : (
+            <Alert tone="warning">
+              Falta configurar el email de la cuenta de Bing de ags-io; escríbenos para darte
+              acceso.
+            </Alert>
+          )}
+          <p className="text-neutral-600">
+            Indica la URL del sitio tal como aparece en Bing (p. ej.{' '}
+            <code>https://{site.domain}/</code>) en «Datos del sitio».
+          </p>
         </div>
+
+        <CollectorStatusBlock collector={connections.bing} />
+        <SyncButton source="bing" blocked={connections.bing.blocker !== null} />
       </div>
     </Card>
   )
