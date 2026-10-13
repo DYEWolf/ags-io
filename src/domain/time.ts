@@ -73,3 +73,37 @@ export function dateToZonedInput(date: Date, timeZone = DISPLAY_TIMEZONE): strin
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${String(p.year)}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}`
 }
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/** Inicio (00:00 en la zona) del día que fue hace `daysBack` días, contando hoy como 0. */
+export function zonedDayStart(now: Date, daysBack: number, timeZone = DISPLAY_TIMEZONE): Date {
+  const p = zonedParts(now, timeZone)
+  // Date.UTC normaliza días negativos o fuera de mes (1 de marzo − 1 = 28/29 de febrero).
+  const day = new Date(Date.UTC(p.year, p.month - 1, p.day - daysBack))
+  const input = `${String(day.getUTCFullYear())}-${pad2(day.getUTCMonth() + 1)}-${pad2(day.getUTCDate())}T00:00`
+  // La medianoche existe siempre en México (el horario de verano cambiaba a las 02:00).
+  return zonedInputToDate(input, timeZone) ?? day
+}
+
+/** Mes calendario en la zona (`2026-10`) en ese instante. */
+export function zonedMonth(date: Date, timeZone = DISPLAY_TIMEZONE): string {
+  const p = zonedParts(date, timeZone)
+  return `${String(p.year)}-${pad2(p.month)}`
+}
+
+/** `[inicio, fin)` de un mes calendario (`2026-10`) en la zona, o `null` si no es válido. */
+export function zonedMonthRange(
+  month: string,
+  timeZone = DISPLAY_TIMEZONE,
+): { from: Date; to: Date } | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(month)
+  if (!match) return null
+  const year = Number(match[1])
+  const index = Number(match[2])
+  if (index < 1 || index > 12) return null
+  const next = index === 12 ? `${String(year + 1)}-01` : `${String(year)}-${pad2(index + 1)}`
+  const from = zonedInputToDate(`${month}-01T00:00`, timeZone)
+  const to = zonedInputToDate(`${next}-01T00:00`, timeZone)
+  return from && to ? { from, to } : null
+}

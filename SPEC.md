@@ -229,6 +229,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 **R-054 Métricas GEO**
 - EL SISTEMA DEBE calcular por prompt, motor y periodo: tasa de mención (% de corridas), tasa de cita del dominio, share of voice contra competidores y dominios fuente más citados.
 - EL SISTEMA DEBE mostrar tamaño de muestra junto a cada métrica y NO DEBE mostrar "posición" como métrica GEO.
+- *Diseño (M10)*: GEO → **Métricas** (primera subpestaña; lógica pura en `domain/geo/metrics.ts`, consulta en `src/server/geo-metrics.ts`). Unidad = corrida; solo cuentan menciones seguras o confirmadas (`mentionCounts`) y la cita propia sale de `cited_domains.own`. Tasa de mención = corridas que mencionan la marca / corridas; tasa de cita = corridas que citan una URL del sitio / corridas; **share of voice** = corridas que mencionan la marca / Σ corridas que mencionan cada entidad (marca + competidores), por entidad, solo si hay competidores; dominios fuente = los 15 dominios citados en más corridas, con la proporción de corridas que los citan. Todo en total, por motor y por prompt. Cada tasa lleva aciertos de n e intervalo de **Wilson al 95 %**, con aviso "muestra pequeña" si n < 5. Filtros (en la URL): periodo últimas 4 semanas (por defecto), 12 semanas (desde las 00:00 de hace 27/83 días hasta el final de hoy) o mes calendario, todo en hora de Ciudad de México; prompts **sin marca** (por defecto: la marca en la pregunta infla la mención), con marca o todos, indicando cuántas corridas hay del otro tipo; motor; prompts archivados fuera salvo que se incluyan. Se calcula al vuelo (sin tablas de agregados: a lo sumo 200 corridas manuales por sitio y día). Tablas y barras CSS (tasa en oscuro, intervalo como banda clara), sin librería de gráficas; nunca "posición".
 
 ### 4.7 Reportes y alertas
 
@@ -290,7 +291,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 |---|---|---|
 | Lenguaje | TypeScript estricto | Node 22 LTS; TypeScript 6.0.x (typescript-eslint aún no soporta TS 7) |
 | Web | TanStack Start (React) | server functions para acciones del dashboard |
-| UI | Tailwind + componentes propios/shadcn | sin dependencias pesadas de charts; usar una librería ligera |
+| UI | Tailwind + componentes propios/shadcn | sin librería de gráficas: barras CSS y SVG propios (tendencia de auditoría, métricas GEO) |
 | DB | PostgreSQL 16 local | JSONB para respuestas crudas |
 | ORM | Drizzle 0.45 (estable) + drizzle-kit | migraciones versionadas, aplicadas en el arranque del contenedor `web` con advisory lock |
 | Servidor Node | srvx + entrypoints propios empaquetados con esbuild | `dist/node/web.mjs` (migra, sirve estáticos, delega en Start) y `dist/node/worker.mjs`; sin Nitro (beta) |
@@ -517,7 +518,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [x] T10.1 CRUD de prompts, competidores y alias.
 - [x] T10.2 Formulario de corrida manual.
 - [x] T10.3 Extractor determinista de menciones y dominios citados.
-- [ ] T10.4 Métricas con tamaño de muestra.
+- [x] T10.4 Métricas con tamaño de muestra.
 
 ### M11 — GEO automático (R-052)
 - [ ] T11.1 `LlmProvider` + primer adaptador (motor elegido en Q3).
