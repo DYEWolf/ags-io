@@ -1,3 +1,4 @@
+import { aggregateBetween, checkBotErrorAlerts } from '~/bots/aggregate'
 import { ingestLogs } from '~/bots/ingest'
 import { rangesLoaded } from '~/bots/verify'
 import { env } from '~/lib/env'
@@ -19,6 +20,12 @@ export const botsIngestJob = defineJob({
     const result = await ingestLogs(env.CADDY_LOG_DIR, log)
     if (result.lines > 0 || result.more) {
       log.info({ ...result, ms: Date.now() - started }, 'logs de Caddy leídos')
+    }
+    // Agregados de los días que recibieron hits y alerta de errores (R-022). Si la pasada falla a
+    // medias, `bots.retention` recalcula cada día todo lo que aún tiene hits crudos.
+    if (result.oldest && result.newest) {
+      await aggregateBetween(result.oldest, result.newest)
+      await checkBotErrorAlerts(log)
     }
     if (result.more) await boss.send('bots.ingest', {})
     // Primer arranque: sin listas de IPs los hits quedan sin verificar hasta el cron diario.

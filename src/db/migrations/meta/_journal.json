@@ -127,6 +127,13 @@
       "when": 1791924864055,
       "tag": "0017_bot_verification",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791925418619,
+      "tag": "0018_bot_daily",
+      "breakpoints": true
     }
   ]
 }

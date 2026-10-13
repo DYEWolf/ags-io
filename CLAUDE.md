@@ -35,13 +35,14 @@ Cuando el usuario pida empezar un módulo:
 - Si `docker` se cuelga en esta Mac: `DOCKER_CONFIG` temporal con `{}` y `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock` (detalle en la memoria de Claude).
 - `localhost:3000` puede estar ocupado por otro proyecto del usuario (p. ej. `crucigrama` con Vite en `[::1]:3000`); Chrome resuelve a ese. Compruébalo con `lsof -nP -iTCP:3000 -sTCP:LISTEN` y avisa; no lo mates.
 - Migraciones: `pnpm db:generate --name <nombre>` y `pnpm db:migrate` (el contenedor `web` también migra al arrancar).
-- Scripts útiles: `pnpm staff:create`, `pnpm spend:demo`, `pnpm audit:run <dominio|id> [--inline]`, `pnpm site:verify <dominio|id> [--staff|--clear]`, `pnpm schemaorg:update` (ver README).
+- Scripts útiles: `pnpm staff:create`, `pnpm spend:demo`, `pnpm audit:run <dominio|id> [--inline]`, `pnpm site:verify <dominio|id> [--staff|--clear]`, `pnpm bots:sample [--host H] [--rotate]`, `pnpm schemaorg:update` (ver README).
 - **Usuarios del usuario**: `staff@test.com` (staff con 2FA) y `test@test.com`. No los borres ni crees datos en sus cuentas. Para probar, crea usuarios/organizaciones temporales (p. ej. `*@example.test`) y bórralos al terminar.
+- Para e2e de staff con un staff temporal: `STAFF_PASSWORD=… pnpm staff:create --email …@example.test`, login por `POST /api/auth/sign-in/email`, 2FA con `POST /api/auth/two-factor/enable` + `verify-totp` (TOTP calculado del `totpURI`) y la cookie con curl: Chrome suele tener abierta la sesión del usuario y no se toca.
 - Para e2e en Chrome con usuario temporal: registro por `POST /api/auth/sign-up/email`, verificación con el enlace de Mailpit (`/api/v1/search`), y `form_input` para los formularios.
 
 ## Estado
 
-_Actualizado al aprobar M6 (2026-10-13)._
+_Actualizado al cerrar M7 (2026-10-13), pendiente del e2e del usuario._
 
 | Módulo | Estado | Notas |
 |---|---|---|
@@ -54,9 +55,17 @@ _Actualizado al aprobar M6 (2026-10-13)._
 | M6 Colectores | ✅ Aprobado | T6.0 (verificación de propiedad) añadida al plan |
 | M8 Auditor | ✅ Aprobado | Adelantado a M5–M7 porque no depende del dominio |
 | M10 GEO manual | ✅ Aprobado | |
-| M7, M9, M11, M12 | Pendientes | |
+| M7 Bots | 🧪 Listo para e2e | Probado con logs de muestra; la prueba con logs reales de la VPS queda para M5 |
+| M9, M11, M12 | Pendientes | |
 
-**Siguiente recomendado**: **M7 Bots** (se desarrolla con logs de muestra; cierra el hito piloto M0–M8 salvo M5). Después M11 (requiere decidir Q3 y una API key). M5 sigue bloqueado por el dominio.
+**Siguiente recomendado** (tras aprobar M7): **M11 GEO automático** (requiere decidir Q3 y una API key; M10 ya está). Alternativas: M9 Rank tracking (API key de Serper y Q4) o M12 Reportes y alertas (bot de Telegram). Con M7 se cierra el hito piloto M0–M8 salvo M5, que sigue bloqueado por el dominio.
+
+Hallazgos de M7 útiles para quien siga:
+
+- **Los datos de bots van por host, no por sitio**, y solo los ve un sitio **verificado** de ese dominio. Por eso `pnpm bots:sample` usa por defecto `bots.example.test`: con `--host chrisrm.dev` los datos falsos aparecen en el sitio verificado de test@test.com.
+- Logs: el worker monta `/var/log/caddy` en solo lectura (dev: `.dev/caddy-logs`; VPS: `CADDY_LOG_HOST_DIR`). **En la VPS falta comprobar** la ruta y los nombres reales de los logs de T0.7, que el usuario `node` del contenedor pueda leerlos (permisos) y la versión de Caddy (formato del nombre de los rotados). Va con T5.4.
+- Verificación: listas de Google, Bing, Apple, OpenAI, Anthropic (`claude.com/crawling/bots.json`) y Perplexity, más DNS inverso + directo para Googlebot, Bingbot y Applebot. La lista de Bing responde 500 a un user-agent con acentos (se usa uno ASCII).
+- Staff → Bots: estado de la ingesta, listas de IPs, reglas propias y catálogo. Las alertas `bot_errors` se registran en `alerts` (Telegram en M12).
 
 Hallazgos de M6 útiles para quien siga:
 
@@ -69,10 +78,9 @@ Hallazgos de M6 útiles para quien siga:
 
 Qué necesita cada pendiente:
 
-- **M7 Bots**: logs de Caddy de la VPS para la verificación real (se puede desarrollar con logs de muestra).
 - **M9 Rank tracking**: API key de Serper; resolver Q4.
 - **M11 GEO automático**: API key del motor elegido en Q3; requiere M10.
-- **M12 Reportes y alertas**: bot de Telegram (token + chat id). Las alertas ya se registran en `alerts` (`spend_cap`, `jsonld_broken`, `site_unverified`).
+- **M12 Reportes y alertas**: bot de Telegram (token + chat id). Las alertas ya se registran en `alerts` (`spend_cap`, `jsonld_broken`, `site_unverified`, `bot_errors`).
 
 **Credenciales ya configuradas** (en `.env`, nunca en el repo): `PAGESPEED_API_KEY`, `BING_WEBMASTER_API_KEY`, `GOOGLE_SERVICE_ACCOUNT_KEY` (base64 de `~/.config/ags-io/google-service-account.json`, que sigue fuera del repo). `BING_ACCOUNT_EMAIL` (`avebaphomet66@gmail.com`, la cuenta de Bing Webmaster dueña de la key; los clientes la ven en Ajustes). **Al tener el dominio (Q6)**, cambiar Bing a una cuenta dedicada del servicio (nueva key + email + chrisrm.dev en esa cuenta) y valorar lo mismo para la service account de Google.
 

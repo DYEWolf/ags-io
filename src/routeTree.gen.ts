@@ -36,6 +36,7 @@ import { Route as AppStaffOrganizacionesRouteImport } from './routes/_app/staff/
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppSitiosSiteIdIndexRouteImport } from './routes/_app/sitios/$siteId/index'
 import { Route as AppSitiosSiteIdAjustesRouteImport } from './routes/_app/sitios/$siteId/ajustes'
+import { Route as AppSitiosSiteIdBotsRouteImport } from './routes/_app/sitios/$siteId/bots'
 import { Route as AppSitiosSiteIdBusquedaRouteRouteImport } from './routes/_app/sitios/$siteId/busqueda/route'
 import { Route as AppSitiosSiteIdGeoRouteRouteImport } from './routes/_app/sitios/$siteId/geo/route'
 import { Route as AppSitiosSiteIdBusquedaIndexRouteImport } from './routes/_app/sitios/$siteId/busqueda/index'
@@ -181,6 +182,11 @@ const AppSitiosSiteIdAjustesRoute = AppSitiosSiteIdAjustesRouteImport.update({
   path: '/ajustes',
   getParentRoute: () => AppSitiosSiteIdRouteRoute,
 } as any)
+const AppSitiosSiteIdBotsRoute = AppSitiosSiteIdBotsRouteImport.update({
+  id: '/bots',
+  path: '/bots',
+  getParentRoute: () => AppSitiosSiteIdRouteRoute,
+} as any)
 const AppSitiosSiteIdBusquedaRouteRoute =
   AppSitiosSiteIdBusquedaRouteRouteImport.update({
     id: '/busqueda',
@@ -272,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/sitios/$siteId/busqueda': typeof AppSitiosSiteIdBusquedaRouteRouteWithChildren
   '/sitios/$siteId/geo': typeof AppSitiosSiteIdGeoRouteRouteWithChildren
   '/sitios/$siteId/ajustes': typeof AppSitiosSiteIdAjustesRoute
+  '/sitios/$siteId/bots': typeof AppSitiosSiteIdBotsRoute
   '/sitios/$siteId/': typeof AppSitiosSiteIdIndexRoute
   '/sitios/$siteId/busqueda/bing': typeof AppSitiosSiteIdBusquedaBingRoute
   '/sitios/$siteId/busqueda/indexacion': typeof AppSitiosSiteIdBusquedaIndexacionRoute
@@ -305,6 +312,7 @@ export interface FileRoutesByTo {
   '/sitios': typeof AppSitiosIndexRoute
   '/staff': typeof AppStaffIndexRoute
   '/sitios/$siteId/ajustes': typeof AppSitiosSiteIdAjustesRoute
+  '/sitios/$siteId/bots': typeof AppSitiosSiteIdBotsRoute
   '/sitios/$siteId': typeof AppSitiosSiteIdIndexRoute
   '/sitios/$siteId/busqueda/bing': typeof AppSitiosSiteIdBusquedaBingRoute
   '/sitios/$siteId/busqueda/indexacion': typeof AppSitiosSiteIdBusquedaIndexacionRoute
@@ -346,6 +354,7 @@ export interface FileRoutesById {
   '/_app/sitios/$siteId/busqueda': typeof AppSitiosSiteIdBusquedaRouteRouteWithChildren
   '/_app/sitios/$siteId/geo': typeof AppSitiosSiteIdGeoRouteRouteWithChildren
   '/_app/sitios/$siteId/ajustes': typeof AppSitiosSiteIdAjustesRoute
+  '/_app/sitios/$siteId/bots': typeof AppSitiosSiteIdBotsRoute
   '/_app/sitios/$siteId/': typeof AppSitiosSiteIdIndexRoute
   '/_app/sitios/$siteId/busqueda/bing': typeof AppSitiosSiteIdBusquedaBingRoute
   '/_app/sitios/$siteId/busqueda/indexacion': typeof AppSitiosSiteIdBusquedaIndexacionRoute
@@ -386,6 +395,7 @@ export interface FileRouteTypes {
     | '/sitios/$siteId/busqueda'
     | '/sitios/$siteId/geo'
     | '/sitios/$siteId/ajustes'
+    | '/sitios/$siteId/bots'
     | '/sitios/$siteId/'
     | '/sitios/$siteId/busqueda/bing'
     | '/sitios/$siteId/busqueda/indexacion'
@@ -419,6 +429,7 @@ export interface FileRouteTypes {
     | '/sitios'
     | '/staff'
     | '/sitios/$siteId/ajustes'
+    | '/sitios/$siteId/bots'
     | '/sitios/$siteId'
     | '/sitios/$siteId/busqueda/bing'
     | '/sitios/$siteId/busqueda/indexacion'
@@ -459,6 +470,7 @@ export interface FileRouteTypes {
     | '/_app/sitios/$siteId/busqueda'
     | '/_app/sitios/$siteId/geo'
     | '/_app/sitios/$siteId/ajustes'
+    | '/_app/sitios/$siteId/bots'
     | '/_app/sitios/$siteId/'
     | '/_app/sitios/$siteId/busqueda/bing'
     | '/_app/sitios/$siteId/busqueda/indexacion'
@@ -670,6 +682,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSitiosSiteIdAjustesRouteImport
       parentRoute: typeof AppSitiosSiteIdRouteRoute
     }
+    '/_app/sitios/$siteId/bots': {
+      id: '/_app/sitios/$siteId/bots'
+      path: '/bots'
+      fullPath: '/sitios/$siteId/bots'
+      preLoaderRoute: typeof AppSitiosSiteIdBotsRouteImport
+      parentRoute: typeof AppSitiosSiteIdRouteRoute
+    }
     '/_app/sitios/$siteId/busqueda': {
       id: '/_app/sitios/$siteId/busqueda'
       path: '/busqueda'
@@ -831,6 +850,7 @@ interface AppSitiosSiteIdRouteRouteChildren {
   AppSitiosSiteIdBusquedaRouteRoute: typeof AppSitiosSiteIdBusquedaRouteRouteWithChildren
   AppSitiosSiteIdGeoRouteRoute: typeof AppSitiosSiteIdGeoRouteRouteWithChildren
   AppSitiosSiteIdAjustesRoute: typeof AppSitiosSiteIdAjustesRoute
+  AppSitiosSiteIdBotsRoute: typeof AppSitiosSiteIdBotsRoute
   AppSitiosSiteIdIndexRoute: typeof AppSitiosSiteIdIndexRoute
 }
 
@@ -839,6 +859,7 @@ const AppSitiosSiteIdRouteRouteChildren: AppSitiosSiteIdRouteRouteChildren = {
     AppSitiosSiteIdBusquedaRouteRouteWithChildren,
   AppSitiosSiteIdGeoRouteRoute: AppSitiosSiteIdGeoRouteRouteWithChildren,
   AppSitiosSiteIdAjustesRoute: AppSitiosSiteIdAjustesRoute,
+  AppSitiosSiteIdBotsRoute: AppSitiosSiteIdBotsRoute,
   AppSitiosSiteIdIndexRoute: AppSitiosSiteIdIndexRoute,
 }
 

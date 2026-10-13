@@ -1,3 +1,4 @@
+import { aggregateRetained } from '~/bots/aggregate'
 import { verifyStoredHits } from '~/bots/verify'
 import { BOTS_RECLASSIFY_QUEUE } from '~/queue/bots'
 import { reclassifyHits } from '~/server/bots'
@@ -13,6 +14,7 @@ export const botsReclassifyJob = defineJob({
     const result = await reclassifyHits()
     // Los que cambiaron de bot quedaron sin verificar: se verifican como el bot nuevo.
     const verified = await verifyStoredHits()
+    await aggregateRetained()
     log.info({ ...result, verified, ms: Date.now() - started }, 'hits de bots reclasificados')
   },
 })

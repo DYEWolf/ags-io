@@ -1,7 +1,7 @@
 // Desarrollo: genera access logs JSON de Caddy de muestra para probar la ingesta de bots (R-020)
 // sin la VPS. Escribe en .dev/caddy-logs, que el worker de Docker monta en /var/log/caddy.
 //
-//   pnpm bots:sample                      añade 300 líneas de las últimas 24 h a chrisrm.dev.log
+//   pnpm bots:sample                      añade 300 líneas de las últimas 24 h a bots.example.test.log
 //   pnpm bots:sample --lines 5000         más líneas
 //   pnpm bots:sample --host otro.com      otro host (y archivo otro.com.log)
 //   pnpm bots:sample --rotate             rota antes como Caddy (renombra con fecha y comprime)
@@ -20,7 +20,9 @@ import { createGzip } from 'node:zlib'
 const { values } = parseArgs({
   options: {
     dir: { type: 'string', default: '.dev/caddy-logs' },
-    host: { type: 'string', default: 'chrisrm.dev' },
+    // Por defecto un dominio de pruebas: un host real (p. ej. chrisrm.dev) mostraría estos datos
+    // falsos en el sitio verificado de ese dominio.
+    host: { type: 'string', default: 'bots.example.test' },
     file: { type: 'string' },
     lines: { type: 'string', default: '300' },
     hours: { type: 'string', default: '24' },

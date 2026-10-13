@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm'
 import {
   bigint,
   check,
+  date,
   index,
   inet,
   integer,
@@ -155,4 +156,23 @@ export const ipVerifications = pgTable(
       sql`${table.verified} in ('verified', 'failed', 'unverified')`,
     ),
   ],
+)
+
+/**
+ * Agregado diario de hits de bots por host (R-022, R-023): `host_key` sin `www.` (como
+ * `sites.domain_key`), día en hora de Ciudad de México. Se recalcula desde `bot_hits` para los
+ * días que cambian y se conserva indefinidamente (los hits crudos, 90 días).
+ */
+export const botDaily = pgTable(
+  'bot_daily',
+  {
+    hostKey: text('host_key').notNull(),
+    date: date('date', { mode: 'string' }).notNull(),
+    bot: text('bot').notNull(),
+    verified: text('verified').$type<BotVerification>().notNull(),
+    hits: integer('hits').notNull(),
+    errors4xx: integer('errors_4xx').notNull(),
+    errors5xx: integer('errors_5xx').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.hostKey, table.date, table.bot, table.verified] })],
 )

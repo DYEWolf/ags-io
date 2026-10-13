@@ -1,3 +1,4 @@
+import { aggregateRetained } from '~/bots/aggregate'
 import { refreshRanges, verifyStoredHits } from '~/bots/verify'
 import { BOTS_RANGES_QUEUE } from '~/queue/bots'
 import { defineJob } from '~/worker/queue'
@@ -15,6 +16,7 @@ export const botsRangesJob = defineJob({
     const started = Date.now()
     const lists = await refreshRanges(log)
     const hits = await verifyStoredHits()
+    await aggregateRetained()
     log.info({ lists, hits, ms: Date.now() - started }, 'listas de IPs de bots actualizadas')
   },
 })

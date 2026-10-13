@@ -40,6 +40,9 @@ export interface IngestResult {
   invalid: number
   /** Quedó log sin leer por el tope de la pasada. */
   more: boolean
+  /** Instantes del hit más antiguo y más reciente guardados (días a reagregar). */
+  oldest: Date | null
+  newest: Date | null
 }
 
 /** Otra pasada avanzó el mismo cursor: esta se detiene sin guardar nada. */
@@ -55,7 +58,16 @@ interface Pass {
 
 /** Lee lo nuevo de todos los logs del directorio. Lanza en errores de DB (el job se reintenta). */
 export async function ingestLogs(dir: string, log: Logger): Promise<IngestResult> {
-  const result: IngestResult = { files: 0, bytes: 0, lines: 0, hits: 0, invalid: 0, more: false }
+  const result: IngestResult = {
+    files: 0,
+    bytes: 0,
+    lines: 0,
+    hits: 0,
+    invalid: 0,
+    more: false,
+    oldest: null,
+    newest: null,
+  }
   let names: string[]
   try {
     const entries = await readdir(dir, { withFileTypes: true })
@@ -271,6 +283,10 @@ async function readInto(
       return moved
     })
     pass.result.hits += batch.length
+    for (const hit of batch) {
+      if (!pass.result.oldest || hit.ts < pass.result.oldest) pass.result.oldest = hit.ts
+      if (!pass.result.newest || hit.ts > pass.result.newest) pass.result.newest = hit.ts
+    }
     pass.result.bytes += consumed - flushedAt
     pass.budget -= consumed - flushedAt
     flushedAt = consumed

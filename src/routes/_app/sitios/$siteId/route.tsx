@@ -59,6 +59,14 @@ function SiteLayout() {
           Búsqueda
         </Link>
         <Link
+          to="/sitios/$siteId/bots"
+          params={{ siteId: site.id }}
+          className={tabClass}
+          activeProps={{ className: tabActive }}
+        >
+          Bots
+        </Link>
+        <Link
           to="/sitios/$siteId/geo"
           params={{ siteId: site.id }}
           className={tabClass}

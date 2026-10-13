@@ -6,6 +6,7 @@ import { bingSyncJob } from '~/worker/jobs/bing.sync'
 import { botsIngestJob } from '~/worker/jobs/bots.ingest'
 import { botsRangesJob } from '~/worker/jobs/bots.ranges'
 import { botsReclassifyJob } from '~/worker/jobs/bots.reclassify'
+import { botsRetentionJob } from '~/worker/jobs/bots.retention'
 import { authCleanupJob } from '~/worker/jobs/auth.cleanup'
 import { emailSendJob } from '~/worker/jobs/email.send'
 import { geoExtractJob } from '~/worker/jobs/geo.extract'
@@ -34,4 +35,5 @@ export const jobs: JobDefinition[] = [
   botsIngestJob,
   botsReclassifyJob,
   botsRangesJob,
+  botsRetentionJob,
 ]
