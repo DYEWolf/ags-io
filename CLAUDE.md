@@ -41,7 +41,7 @@ Cuando el usuario pida empezar un módulo:
 
 ## Estado
 
-_Actualizado al aprobar M8 (2026-10-12)._
+_Actualizado con M10 en curso (2026-10-12)._
 
 | Módulo | Estado | Notas |
 |---|---|---|
@@ -52,14 +52,24 @@ _Actualizado al aprobar M8 (2026-10-12)._
 | M4 Gasto y operación | ✅ Aprobado | |
 | M5 Deploy y respaldos | ⏸ Bloqueado | Falta el dominio (Q6) y acceso SSH a la VPS |
 | M8 Auditor | ✅ Aprobado | Adelantado a M5–M7 porque no depende del dominio |
-| M6, M7, M9–M12 | Pendientes | |
+| M10 GEO manual | 🔨 En curso | T10.1–T10.3 hechas; falta T10.4 (ver abajo) |
+| M6, M7, M9, M11, M12 | Pendientes | |
 
-**Siguiente recomendado: M10 GEO manual** (no necesita credenciales). Qué necesita cada pendiente:
+**M10 en curso — para continuar en una sesión nueva: "continúa M10 con T10.4"** (no hace falta repetir el análisis inicial del módulo; ya está aprobado). Decisiones aprobadas para T10.4 (R-054), aún no reflejadas en SPEC:
+
+- Métricas por prompt, motor y periodo: tasa de mención de la marca (% de corridas), tasa de cita del dominio propio (`cited_domains.own`), share of voice = corridas que mencionan la marca / Σ corridas que mencionan cada entidad (marca + competidores), y dominios fuente más citados.
+- Solo cuentan menciones seguras o confirmadas (`mentionCounts`). Prompts archivados fuera por defecto.
+- Separar prompts **con marca** y **sin marca**; la tasa de mención principal y el share of voice usan por defecto los **sin marca**.
+- Periodo por defecto últimas 4 semanas; opción 12 semanas o mes calendario (hora de CDMX).
+- Cada tasa con n (tamaño de muestra) e intervalo de Wilson al 95 %; aviso "muestra pequeña" si n < 5. Nunca mostrar "posición".
+- Vista: `geo/index.tsx` (hoy redirige a Prompts) pasa a ser Métricas, primera subpestaña de GEO. Tablas + barras CSS, sin librería de gráficas. Lógica pura en `domain/geo/metrics.ts`.
+- T10.4 cierra el módulo: actualizar esta sección a "Listo para e2e", entregar el guion e2e de M10 completo y esperar aprobación.
+
+Después de M10, qué necesita cada pendiente:
 
 - **M6 Colectores**: service account de Google con acceso a la propiedad de Search Console del sitio de prueba (chrisrm.dev), sitio verificado en Bing Webmaster Tools + API key; resolver Q1/Q2 (¿datos de IA por API?).
 - **M7 Bots**: logs de Caddy de la VPS para la verificación real (se puede desarrollar con logs de muestra).
 - **M9 Rank tracking**: API key de Serper; resolver Q4.
-- **M10 GEO manual**: nada.
 - **M11 GEO automático**: API key del motor elegido en Q3; requiere M10.
 - **M12 Reportes y alertas**: bot de Telegram (token + chat id). Las alertas ya se registran en `alerts` (`spend_cap`, `jsonld_broken`).
 
