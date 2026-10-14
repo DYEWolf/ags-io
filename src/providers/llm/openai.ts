@@ -245,6 +245,7 @@ export const openai: LlmProvider = {
       sources: [...sources],
       model: data.model,
       usage,
+      costUsd: charged,
       params,
       response: json,
     }

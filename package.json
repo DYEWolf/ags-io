@@ -34,6 +34,7 @@
     "prepare": "lefthook install"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
     "@better-auth/drizzle-adapter": "1.7.7",
     "@node-rs/argon2": "^2.2.2",
     "@tanstack/react-router": "^1.170.41",

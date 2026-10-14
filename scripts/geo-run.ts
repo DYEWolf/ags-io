@@ -2,7 +2,7 @@
 //
 //   pnpm geo:run <dominio | id del sitio>                 el prompt activo más antiguo
 //   pnpm geo:run <dominio | id del sitio> --prompt <id>   ese prompt
-//   pnpm geo:run … --engine chatgpt                       motor (por defecto chatgpt)
+//   pnpm geo:run … --engine claude                        motor: chatgpt (por defecto) o claude
 //
 // Gasta créditos del proveedor: requiere su API key y un tope global en Staff → Gasto.
 import { parseArgs } from 'node:util'
@@ -26,7 +26,9 @@ const target = positionals[0]
 
 try {
   if (!target) {
-    throw new Error('uso: pnpm geo:run <dominio | id del sitio> [--prompt <id>] [--engine chatgpt]')
+    throw new Error(
+      'uso: pnpm geo:run <dominio | id del sitio> [--prompt <id>] [--engine chatgpt|claude]',
+    )
   }
   const engine = values.engine as AutoEngineId
   if (!AUTO_ENGINE_IDS.includes(engine)) {

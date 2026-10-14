@@ -91,6 +91,8 @@ const schema = z
     // GEO automático (R-052): key de un proyecto de OpenAI dedicado a ags-io. Sin ella no se
     // ejecutan corridas automáticas de ChatGPT.
     OPENAI_API_KEY: blankAsUndefined(z.string().min(1).optional()),
+    // Ídem para Claude: key de un workspace de Anthropic dedicado a ags-io.
+    ANTHROPIC_API_KEY: blankAsUndefined(z.string().min(1).optional()),
   })
   .superRefine((value, ctx) => {
     if (value.EMAIL_PROVIDER === 'resend' && !value.RESEND_API_KEY) {

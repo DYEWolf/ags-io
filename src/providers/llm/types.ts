@@ -21,7 +21,10 @@ export interface LlmResult {
   sources: string[]
   /** Modelo que respondió según la API. */
   model: string
+  /** Uso total (sumado si hubo varias peticiones). */
   usage: LlmUsage
+  /** Lo que cobró el proveedor (cada petición con su tarifa). */
+  costUsd: number
   /** Parámetros enviados (sin credenciales), para la evidencia de la corrida. */
   params: Record<string, unknown>
   /** Respuesta completa de la API (R-052: evidencia cruda). */

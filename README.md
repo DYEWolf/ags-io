@@ -54,7 +54,7 @@ curl localhost:3000/healthz
 | `pnpm audit:run <dominio\|id> [--inline]` | lanza una auditoría técnica sin la espera de 24 h; `--inline` la corre en este proceso (necesita Chromium local: `pnpm exec playwright-core install --only-shell chromium`) |
 | `pnpm site:verify <dominio\|id> [--staff \| --clear]` | comprueba el token de propiedad del sitio (DNS TXT y meta tag); `--staff` lo marca verificado por soporte y `--clear` retira la verificación |
 | `pnpm bots:sample [--lines N] [--host H] [--rotate [--plain]] [--partial]` | añade access logs de Caddy de muestra a `.dev/caddy-logs` (montado en el worker): personas, bots reales y falsos; `--rotate` rota como Caddy. Host por defecto `bots.example.test`: con un dominio real, sus datos falsos aparecen en el sitio verificado de ese dominio |
-| `pnpm geo:run <dominio\|id> [--prompt <id>]` | una corrida automática de GEO (ChatGPT) con el control de gasto; gasta créditos de OpenAI (requiere `OPENAI_API_KEY` y un tope global en Staff → Gasto) |
+| `pnpm geo:run <dominio\|id> [--prompt <id>] [--engine chatgpt\|claude]` | una corrida automática de GEO con el control de gasto; gasta créditos de OpenAI o Anthropic (requiere `OPENAI_API_KEY` o `ANTHROPIC_API_KEY` y un tope global en Staff → Gasto) |
 | `pnpm schemaorg:update` | regenera `src/domain/audit/schemaorg.json` con la versión vigente de schema.org |
 | `pnpm build` / `pnpm start` / `pnpm start:worker` | build y ejecución de producción |
 

@@ -42,7 +42,7 @@ Cuando el usuario pida empezar un módulo:
 
 ## Estado
 
-_Actualizado tras aprobar M7 (2026-10-13)._
+_Actualizado al cerrar M11 (2026-10-14)._
 
 | Módulo | Estado | Notas |
 |---|---|---|
@@ -56,9 +56,20 @@ _Actualizado tras aprobar M7 (2026-10-13)._
 | M8 Auditor | ✅ Aprobado | Adelantado a M5–M7 porque no depende del dominio |
 | M10 GEO manual | ✅ Aprobado | |
 | M7 Bots | ✅ Aprobado | Probado con logs de muestra; la prueba con logs reales de la VPS queda para M5 (T5.4) |
-| M9, M11, M12 | Pendientes | |
+| M11 GEO automático | 🧪 Listo para e2e | ChatGPT (`gpt-6-luna`) y Claude (`claude-haiku-5-5`) |
+| M9, M12 | Pendientes | |
 
-**Siguiente recomendado**: **M11 GEO automático** (requiere decidir Q3 y una API key; M10 ya está). Alternativas: M9 Rank tracking (API key de Serper y Q4) o M12 Reportes y alertas (bot de Telegram). El hito piloto M0–M8 está cerrado salvo M5, que sigue bloqueado por el dominio.
+**Siguiente recomendado** (tras aprobar M11): **M9 Rank tracking** (API key de Serper y Q4; cubre también Google AI Overviews, R-041) o **M12 Reportes y alertas** (bot de Telegram). El hito piloto M0–M8 está cerrado salvo M5, que sigue bloqueado por el dominio.
+
+Hallazgos de M11 útiles para quien siga:
+
+- Motores automáticos en `domain/geo/engines.ts` (`AUTO_ENGINES`): ChatGPT por la Responses API (`gpt-6-luna`, ~$0.012 por corrida con una búsqueda y ~$0.022 con dos) y Claude por la Messages API con el SDK oficial (`claude-haiku-5-5`, ~$0.012 con una búsqueda y ~$0.035 con tres). Haiku 5.5 cobra 5× si la entrada de una petición pasa de 100 000 tokens (`ModelRates.longPrompt`); lo medido queda muy por debajo (~15 000–32 000).
+- Claude usa la búsqueda **directa** (`allowed_callers: ["direct"]`): con el filtrado dinámico, Haiku agotaba las búsquedas en reintentos y respondía sin citas.
+- **Descartados**: Gemini (los términos de Grounding with Google Search prohíben analizar los resultados y exigen mostrar las Search Suggestions; el usuario investiga si su plan Google AI Pro cambia algo), Grounding with Bing (prohíbe almacenar), pasarelas como OpenRouter (pueden cambiar la búsqueda nativa) y Perplexity (API de Sonar retirada; uso marginal).
+- La desambiguación de menciones dudosas (T11.3) usa `gpt-6-luna` con Structured Outputs (~$0.00006 por decisión); la revisión humana manda siempre.
+- Sin probar con datos reales: una respuesta cortada por `max_tokens`, un `pause_turn` de Claude y un corte de red a media llamada.
+- **Topes**: hay un tope global de $15 en Staff → Gasto; conviene poner también uno «por organización por defecto» antes del primer cliente.
+- La key de OpenAI vence a los 90 días (creada el 2026-10-13): rotarla antes del 2027-01-11.
 
 Hallazgos de M7 útiles para quien siga:
 
@@ -79,10 +90,9 @@ Hallazgos de M6 útiles para quien siga:
 Qué necesita cada pendiente:
 
 - **M9 Rank tracking**: API key de Serper; resolver Q4.
-- **M11 GEO automático**: API key del motor elegido en Q3; requiere M10.
 - **M12 Reportes y alertas**: bot de Telegram (token + chat id). Las alertas ya se registran en `alerts` (`spend_cap`, `jsonld_broken`, `site_unverified`, `bot_errors`).
 
-**Credenciales ya configuradas** (en `.env`, nunca en el repo): `PAGESPEED_API_KEY`, `BING_WEBMASTER_API_KEY`, `GOOGLE_SERVICE_ACCOUNT_KEY` (base64 de `~/.config/ags-io/google-service-account.json`, que sigue fuera del repo). `BING_ACCOUNT_EMAIL` (`avebaphomet66@gmail.com`, la cuenta de Bing Webmaster dueña de la key; los clientes la ven en Ajustes). **Al tener el dominio (Q6)**, cambiar Bing a una cuenta dedicada del servicio (nueva key + email + chrisrm.dev en esa cuenta) y valorar lo mismo para la service account de Google.
+**Credenciales ya configuradas** (en `.env`, nunca en el repo): `PAGESPEED_API_KEY`, `BING_WEBMASTER_API_KEY`, `GOOGLE_SERVICE_ACCOUNT_KEY` (base64 de `~/.config/ags-io/google-service-account.json`, que sigue fuera del repo), `OPENAI_API_KEY` (service account del proyecto `ags-io` en OpenAI, 90 días) y `ANTHROPIC_API_KEY`. `BING_ACCOUNT_EMAIL` (`avebaphomet66@gmail.com`, la cuenta de Bing Webmaster dueña de la key; los clientes la ven en Ajustes). **Al tener el dominio (Q6)**, cambiar Bing a una cuenta dedicada del servicio (nueva key + email + chrisrm.dev en esa cuenta) y valorar lo mismo para la service account de Google.
 
 **Accesos de los colectores**:
 
@@ -92,7 +102,7 @@ Qué necesita cada pendiente:
 
 **Sitio piloto**: chrisrm.dev (cuenta test@test.com). Sitios públicos útiles para probar: vite.dev (SSR, 57 URLs), excalidraw.com (contenido solo con JS), levainbakery.com (Shopify, pesado).
 
-**Pendientes y decisiones abiertas**: Q3, Q4 y Q6 en SPEC §13 (Q1/Q2 resueltas en M6: no hay API de datos de IA). Medir la memoria real del worker en la VPS en T5.4 (en Docker local el pico fue ~800 MiB de 1 GiB con un sitio Shopify grande).
+**Pendientes y decisiones abiertas**: Q4 y Q6 en SPEC §13 (Q1/Q2 resueltas en M6, Q3 en M11). Medir la memoria real del worker en la VPS en T5.4 (en Docker local el pico fue ~800 MiB de 1 GiB con un sitio Shopify grande).
 
 ## Al cerrar un módulo (además de `/ship-task`)
 

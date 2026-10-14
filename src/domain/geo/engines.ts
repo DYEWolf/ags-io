@@ -14,6 +14,11 @@ export interface ModelRates {
   output: number
   /** Por búsqueda web. */
   webSearch: number
+  /**
+   * Tarifas por token cuando la entrada de una petición (incluida la caché) pasa de `aboveTokens`.
+   * Haiku 5.5 cobra cinco veces más por encima de 100 000 tokens.
+   */
+  longPrompt?: { aboveTokens: number } & Omit<ModelRates, 'webSearch' | 'longPrompt'>
 }
 
 export interface AutoEngine {
@@ -22,15 +27,17 @@ export interface AutoEngine {
   provider: string
   model: string
   rates: ModelRates
-  /** Costo medio medido por corrida (1–2 búsquedas: $0.011–0.022), para estimar el gasto. */
+  /** Costo medio medido por corrida, para estimar el gasto del mes. */
   typicalCostUsd: number
 }
 
 /**
- * Motores automáticos (Q3, M11). ChatGPT: Responses API de OpenAI con su herramienta `web_search`
- * (la búsqueda nativa del motor) y el modelo más barato con búsqueda (`gpt-6-luna`; tarifas del
- * 2026-10-13). Gemini y Copilot se descartaron: sus términos prohíben analizar los resultados con
- * búsqueda.
+ * Motores automáticos (Q3, M11), cada uno con la búsqueda nativa de su proveedor y su modelo más
+ * barato con búsqueda. ChatGPT: Responses API de OpenAI con `web_search` y `gpt-6-luna` (tarifas
+ * del 2026-10-13; medido: $0.011–0.022 con 1–2 búsquedas). Claude: Messages API de Anthropic con
+ * `web_search` y `claude-haiku-5-5` (tarifas del 2026-10-14; medido: ~$0.012 con una búsqueda y
+ * ~$0.035 con tres). Gemini y Copilot se descartaron: sus términos prohíben analizar los
+ * resultados con búsqueda.
  */
 export const AUTO_ENGINES = {
   chatgpt: {
@@ -39,6 +46,26 @@ export const AUTO_ENGINES = {
     model: 'gpt-6-luna',
     rates: { input: 0.1, cachedInput: 0.01, cacheWrite: 0.125, output: 0.5, webSearch: 0.01 },
     typicalCostUsd: 0.017,
+  },
+  claude: {
+    engine: 'claude',
+    provider: 'anthropic',
+    model: 'claude-haiku-5-5',
+    rates: {
+      input: 0.1,
+      cachedInput: 0.01,
+      cacheWrite: 0.125,
+      output: 0.5,
+      webSearch: 0.01,
+      longPrompt: {
+        aboveTokens: 100_000,
+        input: 0.5,
+        cachedInput: 0.05,
+        cacheWrite: 0.625,
+        output: 2.5,
+      },
+    },
+    typicalCostUsd: 0.02,
   },
 } as const satisfies Partial<Record<Engine, AutoEngine>>
 
@@ -52,8 +79,9 @@ export const AUTO_ENGINE_IDS = Object.keys(AUTO_ENGINES) as AutoEngineId[]
 export const RUN_LIMITS = {
   /** Llamadas a herramientas (búsquedas) por corrida. */
   maxToolCalls: 3,
-  maxOutputTokens: 4_000,
-  /** Tokens de entrada que puede añadir cada búsqueda (medido: ~12 000 con una búsqueda). */
+  /** Incluye el razonamiento (medido: hasta ~2 900 con razonamiento bajo y tres búsquedas). */
+  maxOutputTokens: 6_000,
+  /** Tokens de entrada que puede añadir cada búsqueda (medido: ~10 000–14 000 por búsqueda). */
   inputTokensPerSearch: 25_000,
   /** Tokens de entrada sin búsqueda (la pregunta y las instrucciones del sistema del proveedor). */
   baseInputTokens: 2_000,
@@ -71,6 +99,11 @@ export interface LlmUsage {
 
 const perMillion = (tokens: number, rate: number) => (tokens * rate) / 1_000_000
 
+/** Tarifas por token que aplican a una petición con esa entrada. */
+function tokenRates(rates: ModelRates, inputTokens: number) {
+  return rates.longPrompt && inputTokens > rates.longPrompt.aboveTokens ? rates.longPrompt : rates
+}
+
 /**
  * Costo máximo de una corrida, para reservarlo antes de llamar (R-003): todas las búsquedas, el
  * texto que añade cada una al precio de escritura en caché (el más caro) y toda la salida.
@@ -78,22 +111,50 @@ const perMillion = (tokens: number, rate: number) => (tokens * rate) / 1_000_000
 export function estimateRunCost(rates: ModelRates): number {
   const input =
     RUN_LIMITS.baseInputTokens + RUN_LIMITS.maxToolCalls * RUN_LIMITS.inputTokensPerSearch
+  const perToken = tokenRates(rates, input)
   return round6(
     RUN_LIMITS.maxToolCalls * rates.webSearch +
-      perMillion(input, Math.max(rates.input, rates.cacheWrite)) +
-      perMillion(RUN_LIMITS.maxOutputTokens, rates.output),
+      perMillion(input, Math.max(perToken.input, perToken.cacheWrite)) +
+      perMillion(RUN_LIMITS.maxOutputTokens, perToken.output),
   )
 }
 
-/** Costo real a partir del uso que informa la API. `inputTokens` incluye los de caché. */
+/**
+ * Costo real de una petición a partir del uso que informa la API. `inputTokens` incluye los de
+ * caché. Cada petición se cobra por su cuenta: con varias (p. ej. continuaciones), se suma el
+ * costo de cada una.
+ */
 export function runCost(rates: ModelRates, usage: LlmUsage): number {
   const uncached = Math.max(0, usage.inputTokens - usage.cachedTokens - usage.cacheWriteTokens)
+  const perToken = tokenRates(rates, usage.inputTokens)
   return round6(
     usage.searches * rates.webSearch +
-      perMillion(uncached, rates.input) +
-      perMillion(usage.cachedTokens, rates.cachedInput) +
-      perMillion(usage.cacheWriteTokens, rates.cacheWrite) +
-      perMillion(usage.outputTokens, rates.output),
+      perMillion(uncached, perToken.input) +
+      perMillion(usage.cachedTokens, perToken.cachedInput) +
+      perMillion(usage.cacheWriteTokens, perToken.cacheWrite) +
+      perMillion(usage.outputTokens, perToken.output),
+  )
+}
+
+/** Uso de varias peticiones sumado (para la evidencia de la corrida). */
+export function sumUsage(usages: LlmUsage[]): LlmUsage {
+  return usages.reduce(
+    (total, usage) => ({
+      inputTokens: total.inputTokens + usage.inputTokens,
+      cachedTokens: total.cachedTokens + usage.cachedTokens,
+      cacheWriteTokens: total.cacheWriteTokens + usage.cacheWriteTokens,
+      outputTokens: total.outputTokens + usage.outputTokens,
+      reasoningTokens: total.reasoningTokens + usage.reasoningTokens,
+      searches: total.searches + usage.searches,
+    }),
+    {
+      inputTokens: 0,
+      cachedTokens: 0,
+      cacheWriteTokens: 0,
+      outputTokens: 0,
+      reasoningTokens: 0,
+      searches: 0,
+    },
   )
 }
 

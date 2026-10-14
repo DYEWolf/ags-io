@@ -23,7 +23,10 @@ const PERIODS_PER_MONTH: Record<AutoFrequency, number> = {
 export const DEFAULT_REPETITIONS = 3
 export const MAX_REPETITIONS = 5
 
-export const engineLabelAuto: Record<AutoEngineId, string> = { chatgpt: 'ChatGPT (OpenAI)' }
+export const engineLabelAuto: Record<AutoEngineId, string> = {
+  chatgpt: 'ChatGPT (OpenAI)',
+  claude: 'Claude (Anthropic)',
+}
 
 export const autoSettingsInputSchema = z.object({
   enabled: z.boolean(),

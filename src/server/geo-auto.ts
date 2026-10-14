@@ -3,13 +3,7 @@
 import { and, eq } from 'drizzle-orm'
 import { db } from '~/db/client'
 import { prompts } from '~/db/schema'
-import {
-  AUTO_ENGINES,
-  estimateRunCost,
-  runCost,
-  runLocation,
-  type AutoEngineId,
-} from '~/domain/geo/engines'
+import { AUTO_ENGINES, estimateRunCost, runLocation, type AutoEngineId } from '~/domain/geo/engines'
 import { collectCitations, MAX_CITATIONS } from '~/domain/geo/runs'
 import { logger } from '~/lib/logger'
 import { LLM_PROVIDERS } from '~/providers/llm'
@@ -69,13 +63,13 @@ export async function runAutoPrompt(input: AutoRunInput): Promise<AutoRunOutcome
         location: runLocation(prompt, site),
         signal: input.signal ?? new AbortController().signal,
       })
-      return { result, costUsd: runCost(engine.rates, result.usage) }
+      return { result, costUsd: result.costUsd }
     },
   )
   if (paid.status === 'skipped') return paid
 
   const result = paid.result
-  const costUsd = runCost(engine.rates, result.usage)
+  const costUsd = result.costUsd
   // Las citas de la API cuentan como «lista»; las URLs del texto, como «respuesta».
   const { citations } = collectCitations(
     result.citations.map((citation) => citation.url).join('\n'),
