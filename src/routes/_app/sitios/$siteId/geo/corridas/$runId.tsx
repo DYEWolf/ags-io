@@ -236,9 +236,12 @@ function MentionItem({ mention }: { mention: MentionView }) {
     }
   }
 
+  const byLlm = mention.reviewedBy === 'llm'
   let status
-  if (mention.review === 'confirmed') status = <Badge tone="green">Confirmada</Badge>
-  else if (mention.review === 'rejected') status = <Badge tone="neutral">Descartada</Badge>
+  if (mention.review === 'confirmed')
+    status = <Badge tone="green">{byLlm ? 'Confirmada por IA' : 'Confirmada'}</Badge>
+  else if (mention.review === 'rejected')
+    status = <Badge tone="neutral">{byLlm ? 'Descartada por IA' : 'Descartada'}</Badge>
   else if (mention.ambiguous) status = <Badge tone="amber">Dudosa</Badge>
   else status = <Badge tone="green">Mención</Badge>
 
@@ -257,12 +260,38 @@ function MentionItem({ mention }: { mention: MentionView }) {
       {mention.ambiguous && mention.review === 'auto' ? (
         <p className="text-xs text-neutral-500">
           Es un alias corto o aparece en minúsculas: puede ser otra palabra. No cuenta en las
-          métricas hasta que lo confirmes.
+          métricas hasta que se confirme: lo decide un modelo de IA en unos minutos (si el sitio
+          está activo) o puedes decidirlo tú.
+        </p>
+      ) : null}
+      {byLlm ? (
+        <p className="text-xs text-neutral-500">
+          Era dudosa y la decidió un modelo de IA
+          {mention.reviewReason ? `: ${mention.reviewReason}` : '.'} Si no estás de acuerdo,
+          cámbiala.
         </p>
       ) : null}
       {error ? <p className="text-xs text-red-700">{error}</p> : null}
       <div className="-ml-4 flex flex-wrap gap-1">
-        {mention.review === 'auto' ? (
+        {byLlm ? (
+          mention.review === 'confirmed' ? (
+            <Button
+              variant="ghost"
+              pending={pending === 'rejected'}
+              onClick={() => void review('rejected')}
+            >
+              No es mención
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              pending={pending === 'confirmed'}
+              onClick={() => void review('confirmed')}
+            >
+              Sí es mención
+            </Button>
+          )
+        ) : mention.review === 'auto' ? (
           <>
             {mention.ambiguous ? (
               <Button

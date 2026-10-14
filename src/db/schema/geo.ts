@@ -18,7 +18,7 @@ import {
 import type { AutoFrequency } from '~/domain/geo/auto'
 import type { PromptIntent } from '~/domain/geo/config'
 import type { AutoEngineId, LlmUsage } from '~/domain/geo/engines'
-import type { MentionEntityType, MentionReview } from '~/domain/geo/mentions'
+import type { MentionEntityType, MentionReview, MentionReviewer } from '~/domain/geo/mentions'
 import type { Citation, Engine, RunMode, RunSource } from '~/domain/geo/runs'
 import { user } from './auth'
 import { sites } from './sites'
@@ -180,6 +180,9 @@ export const mentions = pgTable(
     matchCount: integer('match_count').notNull(),
     ambiguous: boolean('ambiguous').notNull(),
     review: text('review').$type<MentionReview>().notNull().default('auto'),
+    reviewedBy: text('reviewed_by').$type<MentionReviewer>(),
+    // Motivo del LLM al desambiguar (T11.3).
+    reviewReason: text('review_reason'),
     snippet: text('snippet').notNull(),
     term: text('term').notNull(),
     extractedAt: tstz('extracted_at').notNull().defaultNow(),
@@ -195,6 +198,10 @@ export const mentions = pgTable(
       sql`(${table.entityType} = 'brand' and ${table.competitorId} is null) or (${table.entityType} = 'competitor' and ${table.competitorId} is not null)`,
     ),
     check('mentions_review_check', sql`${table.review} in ('auto', 'confirmed', 'rejected')`),
+    check(
+      'mentions_reviewed_by_check',
+      sql`${table.reviewedBy} is null or ${table.reviewedBy} in ('user', 'llm')`,
+    ),
   ],
 )
 

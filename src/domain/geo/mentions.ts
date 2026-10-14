@@ -7,6 +7,13 @@ export type MentionEntityType = 'brand' | 'competitor'
 export const MENTION_REVIEWS = ['auto', 'confirmed', 'rejected'] as const
 export type MentionReview = (typeof MENTION_REVIEWS)[number]
 
+/**
+ * Quién revisó una mención: una persona o el LLM barato de T11.3. La revisión de una persona
+ * (también «deshacer») manda: el LLM solo decide dudosas sin revisar (`reviewedBy` null).
+ */
+export const MENTION_REVIEWERS = ['user', 'llm'] as const
+export type MentionReviewer = (typeof MENTION_REVIEWERS)[number]
+
 export interface MentionEntity {
   type: MentionEntityType
   /** Id del competidor; `null` para la marca. */

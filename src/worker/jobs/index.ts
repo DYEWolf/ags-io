@@ -9,6 +9,7 @@ import { botsReclassifyJob } from '~/worker/jobs/bots.reclassify'
 import { botsRetentionJob } from '~/worker/jobs/bots.retention'
 import { authCleanupJob } from '~/worker/jobs/auth.cleanup'
 import { emailSendJob } from '~/worker/jobs/email.send'
+import { geoDisambiguateJob } from '~/worker/jobs/geo.disambiguate'
 import { geoExtractJob } from '~/worker/jobs/geo.extract'
 import { geoRunJob } from '~/worker/jobs/geo.run'
 import { geoScheduleJob } from '~/worker/jobs/geo.schedule'
@@ -27,6 +28,7 @@ export const jobs: JobDefinition[] = [
   auditScheduleJob,
   auditRunJob,
   geoExtractJob,
+  geoDisambiguateJob,
   geoScheduleJob,
   geoRunJob,
   siteVerifyJob,

@@ -55,27 +55,34 @@ export async function extractRunMentions(
       entityType: mentions.entityType,
       competitorId: mentions.competitorId,
       review: mentions.review,
+      reviewedBy: mentions.reviewedBy,
+      reviewReason: mentions.reviewReason,
     })
     .from(mentions)
     .where(eq(mentions.runId, run.id))
-  const reviews = new Map(previous.map((row) => [entityKey(row), row.review]))
+  const reviews = new Map(previous.map((row) => [entityKey(row), row]))
   await tx.delete(mentions).where(eq(mentions.runId, run.id))
   const found = extractMentions(run.answer, entities)
   if (found.length === 0) return
   await tx.insert(mentions).values(
-    found.map((mention) => ({
-      id: randomUUID(),
-      runId: run.id,
-      entityType: mention.type,
-      competitorId: mention.competitorId,
-      matchCount: mention.matchCount,
-      ambiguous: mention.ambiguous,
-      review:
-        reviews.get(entityKey({ entityType: mention.type, competitorId: mention.competitorId })) ??
-        'auto',
-      snippet: mention.snippet,
-      term: mention.term,
-    })),
+    found.map((mention) => {
+      const kept = reviews.get(
+        entityKey({ entityType: mention.type, competitorId: mention.competitorId }),
+      )
+      return {
+        id: randomUUID(),
+        runId: run.id,
+        entityType: mention.type,
+        competitorId: mention.competitorId,
+        matchCount: mention.matchCount,
+        ambiguous: mention.ambiguous,
+        review: kept?.review ?? 'auto',
+        reviewedBy: kept?.reviewedBy ?? null,
+        reviewReason: kept?.reviewReason ?? null,
+        snippet: mention.snippet,
+        term: mention.term,
+      }
+    }),
   )
 }
 
@@ -120,7 +127,11 @@ export async function setMentionReview(
     .innerJoin(sites, eq(sites.id, llmRuns.siteId))
     .where(and(eq(mentions.id, mentionId), eq(sites.organizationId, organizationId)))
   if (!row) return false
-  await db.update(mentions).set({ review }).where(eq(mentions.id, mentionId))
+  // También «deshacer» queda como revisión de una persona: el LLM no vuelve a decidirla.
+  await db
+    .update(mentions)
+    .set({ review, reviewedBy: 'user', reviewReason: null })
+    .where(eq(mentions.id, mentionId))
   log.info({ organizationId, siteId: row.siteId, mentionId, review }, 'mención revisada')
   return true
 }
@@ -136,6 +147,8 @@ export async function runMentions(runId: string) {
       matchCount: mentions.matchCount,
       ambiguous: mentions.ambiguous,
       review: mentions.review,
+      reviewedBy: mentions.reviewedBy,
+      reviewReason: mentions.reviewReason,
       snippet: mentions.snippet,
       term: mentions.term,
     })

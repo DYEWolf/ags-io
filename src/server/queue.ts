@@ -7,7 +7,7 @@ import { AUDIT_QUEUE } from '~/queue/audit'
 import { BOTS_RECLASSIFY_QUEUE } from '~/queue/bots'
 import { SYNC_QUEUES, type SyncSource } from '~/queue/collectors'
 import { EMAIL_QUEUE, emailJobSchema, type EmailJobData } from '~/queue/email'
-import { GEO_EXTRACT_QUEUE, GEO_RUN_QUEUE, geoRunKey } from '~/queue/geo'
+import { GEO_DISAMBIGUATE_QUEUE, GEO_EXTRACT_QUEUE, GEO_RUN_QUEUE, geoRunKey } from '~/queue/geo'
 
 const log = logger.child({ service: 'web', component: 'queue' })
 
@@ -31,6 +31,7 @@ async function start(): Promise<PgBoss> {
   await ensureQueue(boss, AUDIT_QUEUE)
   await ensureQueue(boss, GEO_EXTRACT_QUEUE)
   await ensureQueue(boss, GEO_RUN_QUEUE)
+  await ensureQueue(boss, GEO_DISAMBIGUATE_QUEUE)
   await ensureQueue(boss, BOTS_RECLASSIFY_QUEUE)
   for (const queue of Object.values(SYNC_QUEUES)) await ensureQueue(boss, queue)
   return boss
@@ -101,4 +102,11 @@ export async function enqueueAutoRuns(siteId: string): Promise<number> {
   }
   log.info({ siteId, queued }, 'corridas automáticas pedidas')
   return queued
+}
+
+/** Desambiguación de las menciones dudosas de un sitio (R-053, T11.3) tras una corrida manual. */
+export async function enqueueDisambiguation(siteId: string): Promise<void> {
+  const boss = await producer()
+  const id = await boss.send(GEO_DISAMBIGUATE_QUEUE.name, { siteId }, { singletonKey: siteId })
+  log.info({ jobId: id, siteId, queued: id !== null }, 'desambiguación pedida')
 }

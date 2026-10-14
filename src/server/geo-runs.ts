@@ -2,9 +2,17 @@
 // corrida ajena es indistinguible de una inexistente. Las corridas manuales no tienen costo, así
 // que no pasan por el control de gasto (R-003) y se registran también con el sitio pausado.
 import { randomUUID } from 'node:crypto'
-import { and, count, desc, eq, gte, sql, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, gte, isNull, sql, type SQL } from 'drizzle-orm'
 import { db } from '~/db/client'
-import { citedDomains, llmRuns, prompts, sites, type LlmRun, type RunRaw } from '~/db/schema'
+import {
+  citedDomains,
+  llmRuns,
+  mentions,
+  prompts,
+  sites,
+  type LlmRun,
+  type RunRaw,
+} from '~/db/schema'
 import {
   citedDomains as toCitedDomains,
   MAX_MANUAL_RUNS_PER_DAY,
@@ -66,13 +74,38 @@ function runValues(data: RunData) {
   }
 }
 
+/**
+ * Tras guardar una corrida manual: si quedó alguna mención dudosa sin revisar, la decide el LLM
+ * barato en segundo plano (T11.3). Un fallo al encolar no rompe el guardado.
+ */
+async function requestDisambiguation(siteId: string, runId: string) {
+  const [row] = await db
+    .select({ n: count() })
+    .from(mentions)
+    .where(
+      and(
+        eq(mentions.runId, runId),
+        eq(mentions.ambiguous, true),
+        eq(mentions.review, 'auto'),
+        isNull(mentions.reviewedBy),
+      ),
+    )
+  if ((row?.n ?? 0) === 0) return
+  try {
+    const { enqueueDisambiguation } = await import('~/server/queue')
+    await enqueueDisambiguation(siteId)
+  } catch (error) {
+    log.error({ err: error, siteId, runId }, 'no se pudo pedir la desambiguación')
+  }
+}
+
 export async function createRun(
   organizationId: string,
   siteId: string,
   userId: string,
   data: RunData,
 ): Promise<RunMutation | null> {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const site = await lockSite(tx, organizationId, siteId)
     if (!site) return null
     if (!(await assignablePrompt(tx, siteId, data.promptId))) {
@@ -103,6 +136,8 @@ export async function createRun(
     log.info({ organizationId, siteId, runId: id, engine: data.engine }, 'corrida manual creada')
     return { ok: true, id } as const
   })
+  if (result?.ok) await requestDisambiguation(siteId, result.id)
+  return result
 }
 
 export interface AutoRunData {
@@ -168,7 +203,7 @@ export async function updateRun(
   runId: string,
   data: RunData,
 ): Promise<RunMutation | null> {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const found = await runInOrganization(tx, organizationId, runId)
     if (!found) return null
     // Las automáticas (M11) son evidencia de la API: no se editan a mano.
@@ -180,8 +215,10 @@ export async function updateRun(
     await saveCitedDomains(tx, runId, data, found.domain)
     const entities = await loadEntities(tx, found.run.siteId)
     await extractRunMentions(tx, { id: runId, answer: data.answer }, entities)
-    return { ok: true, id: runId } as const
+    return { ok: true, id: runId, siteId: found.run.siteId } as const
   })
+  if (result?.ok && 'siteId' in result) await requestDisambiguation(result.siteId, runId)
+  return result
 }
 
 export async function deleteRun(organizationId: string, runId: string): Promise<boolean> {

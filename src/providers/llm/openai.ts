@@ -103,6 +103,84 @@ function usageOf(data: z.infer<typeof responseSchema>): LlmUsage {
   }
 }
 
+/** POST a la Responses API: valida la respuesta y exige que esté completa. */
+async function post(key: string, params: Record<string, unknown>, signal: AbortSignal) {
+  let response: Response
+  try {
+    response = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify(params),
+      signal: AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]),
+    })
+  } catch (error) {
+    if (signal.aborted) throw error
+    const message = error instanceof Error ? error.message : String(error)
+    throw new LlmError(`OpenAI no respondió: ${message}`, 'retryable')
+  }
+  const body = await response.text()
+  if (!response.ok) throw errorFor(response.status, body)
+
+  const json = safeJson(body)
+  const parsed = responseSchema.safeParse(json)
+  if (!parsed.success) {
+    throw new LlmError(`respuesta de OpenAI inesperada: ${parsed.error.message}`, 'fatal')
+  }
+  const data = parsed.data
+  const usage = usageOf(data)
+  // Una respuesta incompleta sí se cobra (búsquedas y tokens generados).
+  const charged = runCost(engine.rates, usage)
+  if (data.status !== 'completed') {
+    const reason = data.incomplete_details?.reason ?? data.error?.message ?? data.status
+    throw new LlmError(`OpenAI no terminó la respuesta (${reason})`, 'fatal', charged)
+  }
+  return { json, data, usage, charged }
+}
+
+/** Texto de los mensajes de la salida. */
+function outputText(data: z.infer<typeof responseSchema>): string {
+  return data.output
+    .filter((item) => item.type === 'message')
+    .flatMap((item) => item.content ?? [])
+    .filter((content) => content.type === 'output_text')
+    .map((content) => content.text ?? '')
+    .join('')
+}
+
+/**
+ * Respuesta JSON con esquema estricto (Structured Outputs), sin herramientas: para tareas
+ * internas baratas como desambiguar menciones (T11.3). Devuelve el texto JSON y el uso.
+ */
+export async function openaiStructured(request: {
+  instructions: string
+  input: string
+  name: string
+  schema: Record<string, unknown>
+  maxOutputTokens: number
+  signal: AbortSignal
+}): Promise<{ text: string; model: string; usage: LlmUsage }> {
+  const key = env.OPENAI_API_KEY
+  if (!key) throw new LlmError('OPENAI_API_KEY no está configurada', 'auth', 0)
+  const { data, usage, charged } = await post(
+    key,
+    {
+      model: engine.model,
+      instructions: request.instructions,
+      input: request.input,
+      text: {
+        format: { type: 'json_schema', name: request.name, strict: true, schema: request.schema },
+      },
+      max_output_tokens: request.maxOutputTokens,
+      reasoning: { effort: 'low' },
+      store: false,
+    },
+    request.signal,
+  )
+  const text = outputText(data)
+  if (text === '') throw new LlmError('OpenAI respondió sin texto', 'fatal', charged)
+  return { text, model: data.model, usage }
+}
+
 export const openai: LlmProvider = {
   configured: () => Boolean(env.OPENAI_API_KEY),
 
@@ -132,35 +210,7 @@ export const openai: LlmProvider = {
       store: false,
     }
 
-    let response: Response
-    try {
-      response = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-        body: JSON.stringify(params),
-        signal: AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]),
-      })
-    } catch (error) {
-      if (signal.aborted) throw error
-      const message = error instanceof Error ? error.message : String(error)
-      throw new LlmError(`OpenAI no respondió: ${message}`, 'retryable')
-    }
-    const body = await response.text()
-    if (!response.ok) throw errorFor(response.status, body)
-
-    const json = safeJson(body)
-    const parsed = responseSchema.safeParse(json)
-    if (!parsed.success) {
-      throw new LlmError(`respuesta de OpenAI inesperada: ${parsed.error.message}`, 'fatal')
-    }
-    const data = parsed.data
-    const usage = usageOf(data)
-    // Una respuesta incompleta sí se cobra (búsquedas y tokens generados).
-    const charged = runCost(engine.rates, usage)
-    if (data.status !== 'completed') {
-      const reason = data.incomplete_details?.reason ?? data.error?.message ?? data.status
-      throw new LlmError(`OpenAI no terminó la respuesta (${reason})`, 'fatal', charged)
-    }
+    const { json, data, usage, charged } = await post(key, params, signal)
 
     const parts: string[] = []
     const citations = new Map<string, LlmCitation>()

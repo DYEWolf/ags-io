@@ -39,3 +39,13 @@ export const geoRunJobSchema = z.object({
 export type GeoRunJobData = z.infer<typeof geoRunJobSchema>
 
 export const geoRunKey = (data: GeoRunJobData) => `${data.siteId}:${data.promptId}:${data.engine}`
+
+/**
+ * Desambiguación de las menciones dudosas de un sitio con un LLM barato (R-053, T11.3). Política
+ * `stately` con `singletonKey` = sitio: varias corridas nuevas seguidas = una pasada.
+ */
+export const GEO_DISAMBIGUATE_QUEUE = {
+  name: 'geo.disambiguate',
+  policy: 'stately',
+  config: { expireInSeconds: 30 * 60 },
+} satisfies QueueDefinition

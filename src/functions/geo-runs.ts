@@ -16,6 +16,7 @@ import {
   mentionCounts,
   type MentionEntityType,
   type MentionReview,
+  type MentionReviewer,
 } from '~/domain/geo/mentions'
 import { dateToZonedInput } from '~/domain/time'
 import { organizationMiddleware } from '~/functions/middleware'
@@ -73,6 +74,9 @@ export interface MentionView {
   matchCount: number
   ambiguous: boolean
   review: MentionReview
+  /** `llm`: la decidió el modelo barato (T11.3); `user`: una persona. */
+  reviewedBy: MentionReviewer | null
+  reviewReason: string | null
   /** Cuenta en las métricas (segura o confirmada). */
   counts: boolean
   snippet: string
@@ -155,6 +159,8 @@ export const getRun = createServerFn({ method: 'GET' })
         matchCount: mention.matchCount,
         ambiguous: mention.ambiguous,
         review: mention.review,
+        reviewedBy: mention.reviewedBy,
+        reviewReason: mention.reviewReason,
         counts: mentionCounts(mention),
         snippet: mention.snippet,
         term: mention.term,

@@ -1,4 +1,4 @@
-import { GEO_EXTRACT_QUEUE, geoExtractJobSchema } from '~/queue/geo'
+import { GEO_DISAMBIGUATE_QUEUE, GEO_EXTRACT_QUEUE, geoExtractJobSchema } from '~/queue/geo'
 import { reextractSite } from '~/server/geo-mentions'
 import { defineJob } from '~/worker/queue'
 
@@ -12,10 +12,12 @@ export const geoExtractJob = defineJob({
   queue: GEO_EXTRACT_QUEUE.config,
   policy: GEO_EXTRACT_QUEUE.policy,
   concurrency: 2,
-  handler: async (job, { log }) => {
+  handler: async (job, { log, boss }) => {
     const { siteId } = geoExtractJobSchema.parse(job.data)
     const started = Date.now()
     const runs = await reextractSite(siteId)
     log.info({ siteId, runs, ms: Date.now() - started }, 'menciones recalculadas')
+    // Alias nuevos pueden dejar menciones dudosas: las decide el LLM (si el sitio está activo).
+    await boss.send(GEO_DISAMBIGUATE_QUEUE.name, { siteId }, { singletonKey: siteId })
   },
 })
