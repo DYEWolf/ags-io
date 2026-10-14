@@ -230,6 +230,7 @@ Este repo contiene **el servicio**: app web (dashboard de clientes + panel de st
 - EL SISTEMA DEBE ejecutar cada prompt activo N veces (default 3, configurable) por motor habilitado, con la frecuencia configurada.
 - Motores v1: los que tengan API oficial con búsqueda web; empezar con uno solo (Q3).
 - EL SISTEMA DEBE guardar la respuesta cruda, las citas/fuentes devueltas, el modelo, los parámetros y el costo.
+- *Diseño (M11, motor y adaptador)*: Q3 resuelta (§13): **ChatGPT por la Responses API de OpenAI** con su herramienta `web_search` (búsqueda nativa de OpenAI) y el modelo más barato con búsqueda, `gpt-6-luna`. Motores, tarifas y límites en `domain/geo/engines.ts` (`AUTO_ENGINES`; el modelo va en código porque su costo depende de tarifas conocidas); adaptadores detrás de `LlmProvider` en `src/providers/llm/`. La corrida se hace como la haría un usuario: solo el texto del prompt, sin instrucciones propias, el modelo decide si busca (`tool_choice: auto`), ubicación aproximada = la del prompt o la ciudad del sitio + su país, razonamiento `low`, `store: false`. Para acotar el costo: como mucho 3 búsquedas y 4 000 tokens de salida. `runAutoPrompt()` (src/server/geo-auto.ts) omite sin gastar si el motor no tiene key, el sitio está pausado (`siteForPaidWork()`) o el prompt archivado, y llama dentro de `withPaidCall()` reservando el costo máximo (búsquedas + tokens; ~$0.042) y registrando el real según el `usage` y las búsquedas cobradas (`tool_usage.web_search.num_requests`); medido: ~$0.012 por corrida con una búsqueda. Si el proveedor rechaza la petición (4xx/5xx) se registra costo 0; una respuesta incompleta, lo que informa su `usage`; un corte de red conserva el estimado. Se guarda en `llm_runs` (`source = auto`, modo `web_search`, el modelo que respondió y `cost_usd`): `raw.text` con la respuesta y `raw.api` con parámetros, uso, citas con título, todas las fuentes consultadas y la respuesta completa de la API. Las citas (`url_citation`) cuentan como fuente y las URLs del texto como respuesta (misma normalización de R-051), y en la misma transacción se guardan `cited_domains` y las menciones (R-053). Errores: `auth` (key inválida), `quota` (sin saldo), `retryable` (429, 5xx, red) y `fatal`. La respuesta de la API se parece a la de chatgpt.com pero no es idéntica (otro modelo, sin personalización). `pnpm geo:run <dominio|id> [--prompt <id>]` hace una corrida desde la terminal (soporte; gasta créditos).
 
 **R-053 Extracción de menciones**
 - Para cada respuesta, EL SISTEMA DEBE detectar: menciones de la marca (con alias), menciones de competidores, dominios citados y si cita el dominio propio.
@@ -553,7 +554,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 - [x] T10.4 Métricas con tamaño de muestra.
 
 ### M11 — GEO automático (R-052)
-- [ ] T11.1 `LlmProvider` + primer adaptador (motor elegido en Q3).
+- [x] T11.1 `LlmProvider` + primer adaptador (motor elegido en Q3).
 - [ ] T11.2 Job con N repeticiones + registro de costo + topes.
 - [ ] T11.3 Desambiguación con LLM barato solo para casos dudosos.
 - [ ] T11.4 Segundo motor (solo si el presupuesto lo permite).
@@ -580,7 +581,7 @@ Repo separado en Astro. Sus requisitos se listan aquí solo porque la herramient
 | M1–M5 | Resend (free tier: 3,000 correos/mes) | $0 |
 | M6–M8 | GSC, Bing, PageSpeed, logs propios | $0 |
 | M9–M10 | Serper (tier gratis inicial) | $0 |
-| M11 | 1 motor de LLM por uso | ~$5–20 |
+| M11 | 1 motor de LLM por uso (ChatGPT: ~$0.012 por corrida; 20 prompts × 3 semanales ≈ $3/mes por sitio) | ~$5–20 |
 | 5–10 clientes | SERP + 2–3 motores | ~$20–60 |
 
 Todas las cifras son estimaciones; validar con las tarifas vigentes antes de activar cada proveedor.
@@ -604,11 +605,11 @@ Todas las cifras son estimaciones; validar con las tarifas vigentes antes de act
 
 ## 13. Preguntas abiertas (resolver antes de la tarea indicada)
 
-- **Q3** (T11.1) ¿Qué motor primero? Evaluar el tier gratuito de Gemini (¿incluye grounding con búsqueda?) contra el costo por llamada de OpenAI y Perplexity.
 - **Q4** (T9.3) ¿Serper permite búsquedas de Maps con coordenadas exactas para el geo-grid, o hace falta otro proveedor?
 - **Q6** (M5) Dominio del servicio. No se necesita hasta el deploy; en desarrollo se usa `localhost` y Mailpit.
 
 **Resueltas**
+- **Q3** → OpenAI (M11, 2026-10-13): Responses API + `web_search` con `gpt-6-luna` ($10 por 1 000 búsquedas + tokens; ~$0.012 por corrida medida). ChatGPT es el motor más relevante para los clientes y los términos de OpenAI dan al cliente la propiedad del output. **Descartados**: Gemini con Grounding with Google Search (sus términos prohíben «analyze» los resultados y exigen mostrar las Search Suggestions al usuario que hizo la pregunta; además el tier gratuito ya no incluye búsqueda) y Grounding with Bing (prohíbe almacenar el output; no es Copilot). Pasarelas (OpenRouter, Vercel) descartadas: pueden sustituir la búsqueda nativa por otra (Exa) y suman términos. Sin scraping de apps de consumo (§1.2). Segundo motor (T11.4): Perplexity solo si su API responde con un modelo propio (la API de Sonar se retiró el 2026-09-27 y su preset barato usa un modelo de OpenAI); si no, Claude.
 - **Q1** → No (M6, 2026-10-12). El informe de IA generativa de Search Console (AI Overviews, AI Mode y Discover; solo impresiones) existe desde el 3 de junio de 2026 únicamente en la interfaz: la referencia de `searchanalytics.query` (actualizada el 2026-08-11) no tiene `type` ni dimensión para él.
 - **Q2** → No (M6, 2026-10-12). AI Performance de Bing Webmaster Tools (citas, páginas citadas, grounding queries, citation share; en vista previa) es solo de la interfaz: la API no tiene métodos para esos datos.
 - **Q5** → Better Auth autohospedado (v0.2): el producto es B2C y requiere verificación de email, recuperación, 2FA, organizaciones y panel de staff.

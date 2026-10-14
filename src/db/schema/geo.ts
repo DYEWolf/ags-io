@@ -16,6 +16,7 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import type { PromptIntent } from '~/domain/geo/config'
+import type { LlmUsage } from '~/domain/geo/engines'
 import type { MentionEntityType, MentionReview } from '~/domain/geo/mentions'
 import type { Citation, Engine, RunMode, RunSource } from '~/domain/geo/runs'
 import { user } from './auth'
@@ -88,7 +89,18 @@ export const brandAliases = pgTable(
 
 /** Evidencia cruda de una corrida: el texto pegado (manual) o la respuesta de la API (M11). */
 export interface RunRaw {
+  /** Texto de la respuesta: sobre él se extraen las menciones. */
   text: string
+  /** Solo corridas automáticas (R-052). */
+  api?: {
+    params: Record<string, unknown>
+    usage: LlmUsage
+    /** Fuentes citadas con su título, como las devolvió la API. */
+    citations: { url: string; title: string | null }[]
+    /** Todo lo que el motor consultó al buscar. */
+    sources: string[]
+    response: unknown
+  }
 }
 
 // R-051/R-052: una corrida = una respuesta de un motor a un prompt. Se guarda la evidencia cruda

@@ -87,6 +87,10 @@ const schema = z
     // Bots (R-020): directorio de los access logs JSON de Caddy, montado en solo lectura en el
     // worker. En Docker es siempre /var/log/caddy (compose monta ahí el del host).
     CADDY_LOG_DIR: blankAsUndefined(z.string().min(1).default('/var/log/caddy')),
+
+    // GEO automático (R-052): key de un proyecto de OpenAI dedicado a ags-io. Sin ella no se
+    // ejecutan corridas automáticas de ChatGPT.
+    OPENAI_API_KEY: blankAsUndefined(z.string().min(1).optional()),
   })
   .superRefine((value, ctx) => {
     if (value.EMAIL_PROVIDER === 'resend' && !value.RESEND_API_KEY) {

@@ -23,6 +23,7 @@
     "audit:run": "tsx scripts/audit-run.ts",
     "site:verify": "tsx scripts/site-verify.ts",
     "bots:sample": "tsx scripts/bots-sample.ts",
+    "geo:run": "tsx scripts/geo-run.ts",
     "schemaorg:update": "tsx scripts/schemaorg-vocab.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",

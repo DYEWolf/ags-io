@@ -4,7 +4,7 @@
 import { randomUUID } from 'node:crypto'
 import { and, count, desc, eq, gte, sql, type SQL } from 'drizzle-orm'
 import { db } from '~/db/client'
-import { citedDomains, llmRuns, prompts, sites, type LlmRun } from '~/db/schema'
+import { citedDomains, llmRuns, prompts, sites, type LlmRun, type RunRaw } from '~/db/schema'
 import {
   citedDomains as toCitedDomains,
   MAX_MANUAL_RUNS_PER_DAY,
@@ -101,6 +101,55 @@ export async function createRun(
     await extractRunMentions(tx, { id, answer: data.answer }, await loadEntities(tx, siteId))
     log.info({ organizationId, siteId, runId: id, engine: data.engine }, 'corrida manual creada')
     return { ok: true, id } as const
+  })
+}
+
+export interface AutoRunData {
+  siteId: string
+  promptId: string
+  engine: Engine
+  model: string
+  runAt: Date
+  costUsd: number
+  raw: RunRaw
+  citations: RunData['citations']
+}
+
+/**
+ * Guarda una corrida automática (R-052) con sus dominios citados y menciones. `null` si el sitio o
+ * el prompt se borraron mientras el motor respondía.
+ */
+export async function insertAutoRun(data: AutoRunData): Promise<string | null> {
+  return db.transaction(async (tx) => {
+    const [site] = await tx
+      .select({ id: sites.id, domain: sites.domain })
+      .from(sites)
+      .where(eq(sites.id, data.siteId))
+      .for('update')
+    const [prompt] = await tx
+      .select({ id: prompts.id })
+      .from(prompts)
+      .where(and(eq(prompts.id, data.promptId), eq(prompts.siteId, data.siteId)))
+    if (!site || !prompt) return null
+    const id = randomUUID()
+    await tx.insert(llmRuns).values({
+      id,
+      siteId: data.siteId,
+      promptId: data.promptId,
+      engine: data.engine,
+      mode: 'web_search',
+      model: data.model,
+      source: 'auto',
+      runAt: data.runAt,
+      raw: data.raw,
+      citations: data.citations,
+      costUsd: data.costUsd,
+    })
+    const rows = toCitedDomains(data.citations, site.domain)
+    if (rows.length > 0)
+      await tx.insert(citedDomains).values(rows.map((row) => ({ runId: id, ...row })))
+    await extractRunMentions(tx, { id, answer: data.raw.text }, await loadEntities(tx, data.siteId))
+    return id
   })
 }
 

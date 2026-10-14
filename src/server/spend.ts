@@ -97,6 +97,13 @@ const spentWhere = (start: Date, end: Date) =>
   and(gte(spendLedger.at, start), lt(spendLedger.at, end))
 const sumCost = sql<number>`coalesce(sum(${spendLedger.costUsd}), 0)::float8`
 
+/** Costo cobrado que informa un error del proveedor (`error.chargedUsd`), si lo trae. */
+function chargedUsd(error: unknown): number | null {
+  if (typeof error !== 'object' || error === null || !('chargedUsd' in error)) return null
+  const value = error.chargedUsd
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : null
+}
+
 export async function withPaidCall<T>(
   call: PaidCall,
   run: () => Promise<{ result: T; costUsd?: number }>,
@@ -163,8 +170,13 @@ export async function withPaidCall<T>(
       .where(eq(spendLedger.id, ledgerId))
     return { status: 'done', result }
   } catch (error) {
-    // Se conserva el costo estimado: el proveedor puede haber cobrado aunque la llamada falle.
-    await db.update(spendLedger).set({ status: 'error' }).where(eq(spendLedger.id, ledgerId))
+    // Se conserva el costo estimado (el proveedor puede haber cobrado aunque la llamada falle),
+    // salvo que el error diga cuánto se cobró (`chargedUsd`; p. ej. 0 si la API la rechazó).
+    const charged = chargedUsd(error)
+    await db
+      .update(spendLedger)
+      .set({ status: 'error', ...(charged === null ? {} : { costUsd: charged }) })
+      .where(eq(spendLedger.id, ledgerId))
     throw error
   }
 }
