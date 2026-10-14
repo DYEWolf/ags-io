@@ -42,7 +42,7 @@ Cuando el usuario pida empezar un módulo:
 
 ## Estado
 
-_Actualizado al cerrar M7 (2026-10-13), pendiente del e2e del usuario._
+_Actualizado tras aprobar M7 (2026-10-13)._
 
 | Módulo | Estado | Notas |
 |---|---|---|
@@ -55,10 +55,10 @@ _Actualizado al cerrar M7 (2026-10-13), pendiente del e2e del usuario._
 | M6 Colectores | ✅ Aprobado | T6.0 (verificación de propiedad) añadida al plan |
 | M8 Auditor | ✅ Aprobado | Adelantado a M5–M7 porque no depende del dominio |
 | M10 GEO manual | ✅ Aprobado | |
-| M7 Bots | 🧪 Listo para e2e | Probado con logs de muestra; la prueba con logs reales de la VPS queda para M5 |
+| M7 Bots | ✅ Aprobado | Probado con logs de muestra; la prueba con logs reales de la VPS queda para M5 (T5.4) |
 | M9, M11, M12 | Pendientes | |
 
-**Siguiente recomendado** (tras aprobar M7): **M11 GEO automático** (requiere decidir Q3 y una API key; M10 ya está). Alternativas: M9 Rank tracking (API key de Serper y Q4) o M12 Reportes y alertas (bot de Telegram). Con M7 se cierra el hito piloto M0–M8 salvo M5, que sigue bloqueado por el dominio.
+**Siguiente recomendado**: **M11 GEO automático** (requiere decidir Q3 y una API key; M10 ya está). Alternativas: M9 Rank tracking (API key de Serper y Q4) o M12 Reportes y alertas (bot de Telegram). El hito piloto M0–M8 está cerrado salvo M5, que sigue bloqueado por el dominio.
 
 Hallazgos de M7 útiles para quien siga:
 
