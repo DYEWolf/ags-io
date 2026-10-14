@@ -17,7 +17,7 @@ import {
   type Period,
   type Summary,
 } from '~/domain/geo/metrics'
-import { ENGINES, type Engine } from '~/domain/geo/runs'
+import { ENGINES, RUN_SOURCES, type Engine } from '~/domain/geo/runs'
 import { organizationMiddleware } from '~/functions/middleware'
 
 export interface GeoMetricsView {
@@ -48,6 +48,7 @@ export const getGeoMetrics = createServerFn({ method: 'GET' })
       month: z.string().max(7).optional(),
       branded: z.enum(BRANDED_FILTERS),
       engine: z.enum(ENGINES).optional(),
+      source: z.enum(RUN_SOURCES).optional(),
       includeArchived: z.boolean(),
     }),
   )
@@ -59,6 +60,7 @@ export const getGeoMetrics = createServerFn({ method: 'GET' })
       from: range.from,
       to: range.to,
       engine: data.engine,
+      source: data.source,
       branded: data.branded,
       includeArchived: data.includeArchived,
     })

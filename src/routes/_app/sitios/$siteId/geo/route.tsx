@@ -33,6 +33,14 @@ function GeoLayout() {
           Corridas
         </Link>
         <Link
+          to="/sitios/$siteId/geo/automatico"
+          params={{ siteId }}
+          className={subtabClass}
+          activeProps={{ className: subtabActive }}
+        >
+          Automático
+        </Link>
+        <Link
           to="/sitios/$siteId/geo/prompts"
           params={{ siteId }}
           className={subtabClass}

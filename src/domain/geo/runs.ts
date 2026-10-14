@@ -38,6 +38,8 @@ export const modeLabel: Record<RunMode, string> = {
 export const RUN_SOURCES = ['manual', 'auto'] as const
 export type RunSource = (typeof RUN_SOURCES)[number]
 
+export const sourceLabel: Record<RunSource, string> = { manual: 'Manuales', auto: 'Automáticas' }
+
 export const MAX_ANSWER_CHARS = 50_000
 export const MAX_CITATIONS = 100
 /** Corridas manuales por sitio en 24 h (anti-abuso; una persona no registra más). */

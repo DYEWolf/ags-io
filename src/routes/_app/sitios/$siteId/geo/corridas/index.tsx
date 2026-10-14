@@ -1,7 +1,7 @@
 import { createFileRoute, getRouteApi, Link, useNavigate } from '@tanstack/react-router'
 import { selectClass } from '~/components/site-form'
 import { Badge, dateTimeFormat, Table } from '~/components/ui'
-import { engineLabel, ENGINES, modeLabel } from '~/domain/geo/runs'
+import { engineLabel, ENGINES, modeLabel, RUN_SOURCES, sourceLabel } from '~/domain/geo/runs'
 import { listRuns, runsSearchSchema } from '~/functions/geo-runs'
 
 const geoRoute = getRouteApi('/_app/sitios/$siteId/geo')
@@ -15,6 +15,7 @@ export const Route = createFileRoute('/_app/sitios/$siteId/geo/corridas/')({
         siteId: params.siteId,
         promptId: deps.prompt,
         engine: deps.motor,
+        source: deps.origen,
         page: deps.pagina ?? 1,
       },
     }),
@@ -29,7 +30,7 @@ function RunsPage() {
   const { prompts } = geoRoute.useLoaderData()
   const view = Route.useLoaderData()
   const pages = Math.max(1, Math.ceil(view.total / view.pageSize))
-  const filtered = Boolean(search.prompt ?? search.motor)
+  const filtered = Boolean(search.prompt ?? search.motor ?? search.origen)
   const hasActivePrompts = prompts.some((prompt) => prompt.active)
 
   return (
@@ -69,6 +70,24 @@ function RunsPage() {
               {ENGINES.map((engine) => (
                 <option key={engine} value={engine}>
                   {engineLabel[engine]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
+            Origen
+            <select
+              className={selectClass}
+              value={search.origen ?? ''}
+              onChange={(event) => {
+                const value = RUN_SOURCES.find((source) => source === event.target.value)
+                void navigate({ search: { ...search, origen: value, pagina: undefined } })
+              }}
+            >
+              <option value="">Todas</option>
+              {RUN_SOURCES.map((source) => (
+                <option key={source} value={source}>
+                  {sourceLabel[source]}
                 </option>
               ))}
             </select>

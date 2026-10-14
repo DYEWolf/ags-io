@@ -134,6 +134,13 @@
       "when": 1791925418619,
       "tag": "0018_bot_daily",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791952080260,
+      "tag": "0019_geo_auto_settings",
+      "breakpoints": true
     }
   ]
 }

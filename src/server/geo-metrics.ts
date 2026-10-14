@@ -5,12 +5,13 @@ import { and, desc, eq, gte, lt, sql, type SQL } from 'drizzle-orm'
 import { db } from '~/db/client'
 import { citedDomains, competitors, llmRuns, prompts, sites } from '~/db/schema'
 import { TOP_DOMAINS, type BrandedFilter, type MetricRun } from '~/domain/geo/metrics'
-import type { Engine } from '~/domain/geo/runs'
+import type { Engine, RunSource } from '~/domain/geo/runs'
 
 export interface MetricsFilters {
   from: Date
   to: Date
   engine?: Engine
+  source?: RunSource
   branded: BrandedFilter
   includeArchived: boolean
 }
@@ -41,6 +42,7 @@ export async function geoMetricsData(
     lt(llmRuns.runAt, filters.to),
   ]
   if (filters.engine) base.push(eq(llmRuns.engine, filters.engine))
+  if (filters.source) base.push(eq(llmRuns.source, filters.source))
   if (!filters.includeArchived) base.push(eq(prompts.active, true))
   const withBranded = [...base]
   if (filters.branded !== 'todos') withBranded.push(eq(prompts.branded, filters.branded === 'con'))

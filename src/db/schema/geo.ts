@@ -15,8 +15,9 @@ import {
   unique,
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
+import type { AutoFrequency } from '~/domain/geo/auto'
 import type { PromptIntent } from '~/domain/geo/config'
-import type { LlmUsage } from '~/domain/geo/engines'
+import type { AutoEngineId, LlmUsage } from '~/domain/geo/engines'
 import type { MentionEntityType, MentionReview } from '~/domain/geo/mentions'
 import type { Citation, Engine, RunMode, RunSource } from '~/domain/geo/runs'
 import { user } from './auth'
@@ -202,3 +203,36 @@ export type Competitor = typeof competitors.$inferSelect
 export type BrandAlias = typeof brandAliases.$inferSelect
 export type LlmRun = typeof llmRuns.$inferSelect
 export type Mention = typeof mentions.$inferSelect
+
+// R-052: corridas automáticas por sitio. Sin fila = desactivadas (cuestan créditos).
+export const geoAutoSettings = pgTable(
+  'geo_auto_settings',
+  {
+    siteId: text('site_id')
+      .primaryKey()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    enabled: boolean('enabled').notNull().default(false),
+    repetitions: integer('repetitions').notNull().default(3),
+    frequency: text('frequency').$type<AutoFrequency>().notNull().default('weekly'),
+    engines: text('engines').array().$type<AutoEngineId[]>().notNull().default(['chatgpt']),
+    // Último fallo de una corrida (key inválida, sin saldo, respuesta incompleta…); se borra al
+    // completar la siguiente.
+    lastError: text('last_error'),
+    lastErrorAt: tstz('last_error_at'),
+    updatedBy: text('updated_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: tstz('created_at').notNull().defaultNow(),
+    updatedAt: tstz('updated_at')
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    check('geo_auto_settings_repetitions_check', sql`${table.repetitions} between 1 and 5`),
+    check(
+      'geo_auto_settings_frequency_check',
+      sql`${table.frequency} in ('weekly', 'biweekly', 'monthly')`,
+    ),
+  ],
+)
+
+export type GeoAutoSettings = typeof geoAutoSettings.$inferSelect

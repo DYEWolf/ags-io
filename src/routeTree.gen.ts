@@ -43,6 +43,7 @@ import { Route as AppSitiosSiteIdBusquedaIndexRouteImport } from './routes/_app/
 import { Route as AppSitiosSiteIdBusquedaBingRouteImport } from './routes/_app/sitios/$siteId/busqueda/bing'
 import { Route as AppSitiosSiteIdBusquedaIndexacionRouteImport } from './routes/_app/sitios/$siteId/busqueda/indexacion'
 import { Route as AppSitiosSiteIdGeoIndexRouteImport } from './routes/_app/sitios/$siteId/geo/index'
+import { Route as AppSitiosSiteIdGeoAutomaticoRouteImport } from './routes/_app/sitios/$siteId/geo/automatico'
 import { Route as AppSitiosSiteIdGeoMarcaRouteImport } from './routes/_app/sitios/$siteId/geo/marca'
 import { Route as AppSitiosSiteIdGeoPromptsRouteImport } from './routes/_app/sitios/$siteId/geo/prompts'
 import { Route as AppSitiosSiteIdGeoCorridasIndexRouteImport } from './routes/_app/sitios/$siteId/geo/corridas/index'
@@ -221,6 +222,12 @@ const AppSitiosSiteIdGeoIndexRoute = AppSitiosSiteIdGeoIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSitiosSiteIdGeoRouteRoute,
 } as any)
+const AppSitiosSiteIdGeoAutomaticoRoute =
+  AppSitiosSiteIdGeoAutomaticoRouteImport.update({
+    id: '/automatico',
+    path: '/automatico',
+    getParentRoute: () => AppSitiosSiteIdGeoRouteRoute,
+  } as any)
 const AppSitiosSiteIdGeoMarcaRoute = AppSitiosSiteIdGeoMarcaRouteImport.update({
   id: '/marca',
   path: '/marca',
@@ -282,6 +289,7 @@ export interface FileRoutesByFullPath {
   '/sitios/$siteId/': typeof AppSitiosSiteIdIndexRoute
   '/sitios/$siteId/busqueda/bing': typeof AppSitiosSiteIdBusquedaBingRoute
   '/sitios/$siteId/busqueda/indexacion': typeof AppSitiosSiteIdBusquedaIndexacionRoute
+  '/sitios/$siteId/geo/automatico': typeof AppSitiosSiteIdGeoAutomaticoRoute
   '/sitios/$siteId/geo/marca': typeof AppSitiosSiteIdGeoMarcaRoute
   '/sitios/$siteId/geo/prompts': typeof AppSitiosSiteIdGeoPromptsRoute
   '/sitios/$siteId/busqueda/': typeof AppSitiosSiteIdBusquedaIndexRoute
@@ -316,6 +324,7 @@ export interface FileRoutesByTo {
   '/sitios/$siteId': typeof AppSitiosSiteIdIndexRoute
   '/sitios/$siteId/busqueda/bing': typeof AppSitiosSiteIdBusquedaBingRoute
   '/sitios/$siteId/busqueda/indexacion': typeof AppSitiosSiteIdBusquedaIndexacionRoute
+  '/sitios/$siteId/geo/automatico': typeof AppSitiosSiteIdGeoAutomaticoRoute
   '/sitios/$siteId/geo/marca': typeof AppSitiosSiteIdGeoMarcaRoute
   '/sitios/$siteId/geo/prompts': typeof AppSitiosSiteIdGeoPromptsRoute
   '/sitios/$siteId/busqueda': typeof AppSitiosSiteIdBusquedaIndexRoute
@@ -358,6 +367,7 @@ export interface FileRoutesById {
   '/_app/sitios/$siteId/': typeof AppSitiosSiteIdIndexRoute
   '/_app/sitios/$siteId/busqueda/bing': typeof AppSitiosSiteIdBusquedaBingRoute
   '/_app/sitios/$siteId/busqueda/indexacion': typeof AppSitiosSiteIdBusquedaIndexacionRoute
+  '/_app/sitios/$siteId/geo/automatico': typeof AppSitiosSiteIdGeoAutomaticoRoute
   '/_app/sitios/$siteId/geo/marca': typeof AppSitiosSiteIdGeoMarcaRoute
   '/_app/sitios/$siteId/geo/prompts': typeof AppSitiosSiteIdGeoPromptsRoute
   '/_app/sitios/$siteId/busqueda/': typeof AppSitiosSiteIdBusquedaIndexRoute
@@ -399,6 +409,7 @@ export interface FileRouteTypes {
     | '/sitios/$siteId/'
     | '/sitios/$siteId/busqueda/bing'
     | '/sitios/$siteId/busqueda/indexacion'
+    | '/sitios/$siteId/geo/automatico'
     | '/sitios/$siteId/geo/marca'
     | '/sitios/$siteId/geo/prompts'
     | '/sitios/$siteId/busqueda/'
@@ -433,6 +444,7 @@ export interface FileRouteTypes {
     | '/sitios/$siteId'
     | '/sitios/$siteId/busqueda/bing'
     | '/sitios/$siteId/busqueda/indexacion'
+    | '/sitios/$siteId/geo/automatico'
     | '/sitios/$siteId/geo/marca'
     | '/sitios/$siteId/geo/prompts'
     | '/sitios/$siteId/busqueda'
@@ -474,6 +486,7 @@ export interface FileRouteTypes {
     | '/_app/sitios/$siteId/'
     | '/_app/sitios/$siteId/busqueda/bing'
     | '/_app/sitios/$siteId/busqueda/indexacion'
+    | '/_app/sitios/$siteId/geo/automatico'
     | '/_app/sitios/$siteId/geo/marca'
     | '/_app/sitios/$siteId/geo/prompts'
     | '/_app/sitios/$siteId/busqueda/'
@@ -731,6 +744,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSitiosSiteIdGeoIndexRouteImport
       parentRoute: typeof AppSitiosSiteIdGeoRouteRoute
     }
+    '/_app/sitios/$siteId/geo/automatico': {
+      id: '/_app/sitios/$siteId/geo/automatico'
+      path: '/automatico'
+      fullPath: '/sitios/$siteId/geo/automatico'
+      preLoaderRoute: typeof AppSitiosSiteIdGeoAutomaticoRouteImport
+      parentRoute: typeof AppSitiosSiteIdGeoRouteRoute
+    }
     '/_app/sitios/$siteId/geo/marca': {
       id: '/_app/sitios/$siteId/geo/marca'
       path: '/marca'
@@ -823,6 +843,7 @@ const AppSitiosSiteIdBusquedaRouteRouteWithChildren =
   )
 
 interface AppSitiosSiteIdGeoRouteRouteChildren {
+  AppSitiosSiteIdGeoAutomaticoRoute: typeof AppSitiosSiteIdGeoAutomaticoRoute
   AppSitiosSiteIdGeoMarcaRoute: typeof AppSitiosSiteIdGeoMarcaRoute
   AppSitiosSiteIdGeoPromptsRoute: typeof AppSitiosSiteIdGeoPromptsRoute
   AppSitiosSiteIdGeoIndexRoute: typeof AppSitiosSiteIdGeoIndexRoute
@@ -833,6 +854,7 @@ interface AppSitiosSiteIdGeoRouteRouteChildren {
 
 const AppSitiosSiteIdGeoRouteRouteChildren: AppSitiosSiteIdGeoRouteRouteChildren =
   {
+    AppSitiosSiteIdGeoAutomaticoRoute: AppSitiosSiteIdGeoAutomaticoRoute,
     AppSitiosSiteIdGeoMarcaRoute: AppSitiosSiteIdGeoMarcaRoute,
     AppSitiosSiteIdGeoPromptsRoute: AppSitiosSiteIdGeoPromptsRoute,
     AppSitiosSiteIdGeoIndexRoute: AppSitiosSiteIdGeoIndexRoute,

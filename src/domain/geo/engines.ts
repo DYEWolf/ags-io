@@ -22,6 +22,8 @@ export interface AutoEngine {
   provider: string
   model: string
   rates: ModelRates
+  /** Costo medio medido por corrida (1–2 búsquedas: $0.011–0.022), para estimar el gasto. */
+  typicalCostUsd: number
 }
 
 /**
@@ -36,6 +38,7 @@ export const AUTO_ENGINES = {
     provider: 'openai',
     model: 'gpt-6-luna',
     rates: { input: 0.1, cachedInput: 0.01, cacheWrite: 0.125, output: 0.5, webSearch: 0.01 },
+    typicalCostUsd: 0.017,
   },
 } as const satisfies Partial<Record<Engine, AutoEngine>>
 

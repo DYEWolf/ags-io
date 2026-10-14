@@ -2,7 +2,7 @@
 // posiciones (SPEC §1.2): cada tasa lleva su tamaño de muestra y su intervalo de Wilson al 95 %.
 // Lógica pura.
 import { z } from 'zod'
-import { ENGINES, type Engine } from '~/domain/geo/runs'
+import { ENGINES, RUN_SOURCES, type Engine } from '~/domain/geo/runs'
 import { zonedDayStart, zonedMonth, zonedMonthRange } from '~/domain/time'
 
 /** Por debajo de esta muestra la tasa se marca como "muestra pequeña". */
@@ -188,6 +188,7 @@ export const metricsSearchSchema = z.object({
     .catch(undefined),
   prompts: z.enum(BRANDED_FILTERS).optional().catch(undefined),
   motor: z.enum(ENGINES).optional().catch(undefined),
+  origen: z.enum(RUN_SOURCES).optional().catch(undefined),
   archivados: z.boolean().optional().catch(undefined),
 })
 export type MetricsSearch = z.output<typeof metricsSearchSchema>

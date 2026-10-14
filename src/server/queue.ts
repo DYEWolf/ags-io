@@ -7,7 +7,7 @@ import { AUDIT_QUEUE } from '~/queue/audit'
 import { BOTS_RECLASSIFY_QUEUE } from '~/queue/bots'
 import { SYNC_QUEUES, type SyncSource } from '~/queue/collectors'
 import { EMAIL_QUEUE, emailJobSchema, type EmailJobData } from '~/queue/email'
-import { GEO_EXTRACT_QUEUE } from '~/queue/geo'
+import { GEO_EXTRACT_QUEUE, GEO_RUN_QUEUE, geoRunKey } from '~/queue/geo'
 
 const log = logger.child({ service: 'web', component: 'queue' })
 
@@ -30,6 +30,7 @@ async function start(): Promise<PgBoss> {
   await ensureQueue(boss, EMAIL_QUEUE)
   await ensureQueue(boss, AUDIT_QUEUE)
   await ensureQueue(boss, GEO_EXTRACT_QUEUE)
+  await ensureQueue(boss, GEO_RUN_QUEUE)
   await ensureQueue(boss, BOTS_RECLASSIFY_QUEUE)
   for (const queue of Object.values(SYNC_QUEUES)) await ensureQueue(boss, queue)
   return boss
@@ -85,4 +86,19 @@ export async function enqueueBotsReclassify(): Promise<void> {
   const boss = await producer()
   const id = await boss.send(BOTS_RECLASSIFY_QUEUE.name, {})
   log.info({ jobId: id, queued: id !== null }, 'reclasificación de bots pedida')
+}
+
+/**
+ * Corridas automáticas que le faltan a un sitio en el periodo en curso (R-052), al guardar sus
+ * ajustes (sin esperar al cron diario). Devuelve cuántos pares prompt-motor quedaron en cola.
+ */
+export async function enqueueAutoRuns(siteId: string): Promise<number> {
+  const { pendingAutoRuns } = await import('~/server/geo-schedule')
+  const boss = await producer()
+  let queued = 0
+  for (const data of await pendingAutoRuns(siteId)) {
+    if (await boss.send(GEO_RUN_QUEUE.name, data, { singletonKey: geoRunKey(data) })) queued += 1
+  }
+  log.info({ siteId, queued }, 'corridas automáticas pedidas')
+  return queued
 }

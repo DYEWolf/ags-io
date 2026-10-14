@@ -10,6 +10,7 @@ import {
   MAX_MANUAL_RUNS_PER_DAY,
   type Engine,
   type RunData,
+  type RunSource,
 } from '~/domain/geo/runs'
 import { logger } from '~/lib/logger'
 import { extractRunMentions, loadEntities } from '~/server/geo-mentions'
@@ -196,6 +197,7 @@ export async function deleteRun(organizationId: string, runId: string): Promise<
 export interface RunFilters {
   promptId?: string
   engine?: Engine
+  source?: RunSource
   page: number
 }
 
@@ -208,6 +210,7 @@ export async function listRuns(organizationId: string, siteId: string, filters: 
   const where: SQL[] = [eq(llmRuns.siteId, siteId)]
   if (filters.promptId) where.push(eq(llmRuns.promptId, filters.promptId))
   if (filters.engine) where.push(eq(llmRuns.engine, filters.engine))
+  if (filters.source) where.push(eq(llmRuns.source, filters.source))
   const condition = and(...where)
   const [rows, [total]] = await Promise.all([
     db

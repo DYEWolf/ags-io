@@ -12,7 +12,7 @@ import {
   type Rate,
   type Summary,
 } from '~/domain/geo/metrics'
-import { engineLabel, ENGINES } from '~/domain/geo/runs'
+import { engineLabel, ENGINES, RUN_SOURCES, sourceLabel } from '~/domain/geo/runs'
 import { getGeoMetrics, type GeoMetricsView } from '~/functions/geo-metrics'
 
 const geoRoute = getRouteApi('/_app/sitios/$siteId/geo')
@@ -29,6 +29,7 @@ export const Route = createFileRoute('/_app/sitios/$siteId/geo/')({
         month: deps.mes,
         branded: deps.prompts ?? 'sin',
         engine: deps.motor,
+        source: deps.origen,
         includeArchived: deps.archivados ?? false,
       },
     }),
@@ -222,6 +223,24 @@ function MetricsPage() {
             {ENGINES.map((engine) => (
               <option key={engine} value={engine}>
                 {engineLabel[engine]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-neutral-600">
+          Origen
+          <select
+            className={selectClass}
+            value={search.origen ?? ''}
+            onChange={(event) => {
+              const value = RUN_SOURCES.find((source) => source === event.target.value)
+              void navigate({ search: { ...search, origen: value } })
+            }}
+          >
+            <option value="">Todas</option>
+            {RUN_SOURCES.map((source) => (
+              <option key={source} value={source}>
+                {sourceLabel[source]}
               </option>
             ))}
           </select>

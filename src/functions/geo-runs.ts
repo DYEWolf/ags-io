@@ -4,6 +4,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import {
   ENGINES,
+  RUN_SOURCES,
   runInputSchema,
   type CitationOrigin,
   type Engine,
@@ -87,6 +88,7 @@ const valuesSchema = z.record(z.string(), z.unknown())
 export const runsSearchSchema = z.object({
   prompt: idSchema.optional().catch(undefined),
   motor: z.enum(ENGINES).optional().catch(undefined),
+  origen: z.enum(RUN_SOURCES).optional().catch(undefined),
   pagina: z.coerce.number().int().min(1).max(10_000).optional().catch(undefined),
 })
 
@@ -106,6 +108,7 @@ export const listRuns = createServerFn({ method: 'GET' })
       siteId: idSchema,
       promptId: idSchema.optional(),
       engine: z.enum(ENGINES).optional(),
+      source: z.enum(RUN_SOURCES).optional(),
       page: z.number().int().min(1).max(10_000),
     }),
   )
