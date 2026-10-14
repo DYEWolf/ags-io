@@ -42,7 +42,7 @@ Cuando el usuario pida empezar un módulo:
 
 ## Estado
 
-_Actualizado al cerrar M11 (2026-10-14)._
+_Actualizado tras aprobar M11 (2026-10-14)._
 
 | Módulo | Estado | Notas |
 |---|---|---|
@@ -56,10 +56,10 @@ _Actualizado al cerrar M11 (2026-10-14)._
 | M8 Auditor | ✅ Aprobado | Adelantado a M5–M7 porque no depende del dominio |
 | M10 GEO manual | ✅ Aprobado | |
 | M7 Bots | ✅ Aprobado | Probado con logs de muestra; la prueba con logs reales de la VPS queda para M5 (T5.4) |
-| M11 GEO automático | 🧪 Listo para e2e | ChatGPT (`gpt-6-luna`) y Claude (`claude-haiku-5-5`) |
+| M11 GEO automático | ✅ Aprobado | ChatGPT (`gpt-6-luna`) y Claude (`claude-haiku-5-5`) |
 | M9, M12 | Pendientes | |
 
-**Siguiente recomendado** (tras aprobar M11): **M9 Rank tracking** (API key de Serper y Q4; cubre también Google AI Overviews, R-041) o **M12 Reportes y alertas** (bot de Telegram). El hito piloto M0–M8 está cerrado salvo M5, que sigue bloqueado por el dominio.
+**Siguiente recomendado**: **M9 Rank tracking** (API key de Serper y Q4; cubre también Google AI Overviews, R-041) o **M12 Reportes y alertas** (bot de Telegram). El hito piloto M0–M8 está cerrado salvo M5, que sigue bloqueado por el dominio.
 
 Hallazgos de M11 útiles para quien siga:
 
